@@ -1,0 +1,4 @@
+EclipseEditorOverlay
+====================
+
+eduride editor plugin
