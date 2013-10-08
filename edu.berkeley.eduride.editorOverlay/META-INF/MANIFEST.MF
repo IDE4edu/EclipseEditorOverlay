@@ -1,0 +1,10 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: EditorOverlay
+Bundle-SymbolicName: edu.berkeley.eduride.editorOverlay
+Bundle-Version: 1.0.0.qualifier
+Bundle-Activator: edu.berkeley.eduride.editoroverlay.Activator
+Bundle-Vendor: Editor Overlay
+Require-Bundle: org.eclipse.core.runtime
+Bundle-RequiredExecutionEnvironment: JavaSE-1.7
+Bundle-ActivationPolicy: lazy
