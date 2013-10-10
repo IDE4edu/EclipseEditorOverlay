@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+   <extension
+         point="org.eclipse.ui.commands">
+      <category
+            description="whatever"
+            id="edu.berkeley.eduride.editorOverlay.category1"
+            name="EditorStuff">
+      </category>
+      <command
+            categoryId="edu.berkeley.eduride.editorOverlay.category1"
+            defaultHandler="edu.berkeley.eduride.editoroverlay.handlers.InstallKeyVerifyListener"
+            id="edu.berkeley.eduride.editorOverlay.installKeyVerifyListener"
+            name="Install Key Verify Listener">
+      </command>
+   </extension>
+   <extension
+         point="org.eclipse.ui.menus">
+      <menuContribution
+            locationURI="toolbar:org.eclipse.ui.main.toolbar?after=additions">
+         <toolbar
+               id="edu.berkeley.eduride.toolbars.main">
+            <command
+                  commandId="edu.berkeley.eduride.editorOverlay.installKeyVerifyListener"
+                  icon="icons/1381460317_keyboard_red.png"
+                  label="Install Key Verify Listener"
+                  style="push"
+                  tooltip="For Editor Plugin">
+            </command>
+         </toolbar>
+      </menuContribution>
+   </extension>
+
+</plugin>
