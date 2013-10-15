@@ -18,13 +18,16 @@ import org.eclipse.ui.part.FileEditorInput;
 import org.eclipse.ui.texteditor.AbstractDecoratedTextEditor;
 import org.eclipse.ui.texteditor.IDocumentProvider;
 import org.eclipse.ui.texteditor.ITextEditor;
+import java.util.HashSet;
 
 public class EditorVerifyKeyListener implements VerifyKeyListener {
 
 	private ITextEditor editor;
 	private IDocument doc;
 	private ITextSelection sel;
-
+	private static HashSet<IEditorPart> installedOn = new HashSet<IEditorPart>();
+	
+	
 	public EditorVerifyKeyListener(IEditorPart editor) {
 		this.installMe(editor);
 	}
@@ -32,6 +35,11 @@ public class EditorVerifyKeyListener implements VerifyKeyListener {
 	public static void ensureInstalled(IEditorPart editor) {
 		if (shouldInstall(editor)) {
 			//TODO Don't install if already exists
+			if(installedOn.contains(editor)) {
+				System.out.println("Already Installed!");
+				return;
+			}
+			installedOn.add(editor);
 			EditorVerifyKeyListener ekpl = new EditorVerifyKeyListener(editor);	
 		}
 	}
