@@ -11,6 +11,10 @@ import org.eclipse.swt.custom.VerifyKeyListener;
 import org.eclipse.swt.events.KeyEvent;
 import org.eclipse.swt.events.KeyListener;
 import org.eclipse.swt.events.VerifyEvent;
+import org.eclipse.swt.graphics.Color;
+import org.eclipse.swt.graphics.GC;
+import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IEditorPart;
@@ -18,6 +22,8 @@ import org.eclipse.ui.part.FileEditorInput;
 import org.eclipse.ui.texteditor.AbstractDecoratedTextEditor;
 import org.eclipse.ui.texteditor.IDocumentProvider;
 import org.eclipse.ui.texteditor.ITextEditor;
+
+import java.util.HashMap;
 import java.util.HashSet;
 
 public class EditorVerifyKeyListener implements VerifyKeyListener {
@@ -25,22 +31,24 @@ public class EditorVerifyKeyListener implements VerifyKeyListener {
 	private ITextEditor editor;
 	private IDocument doc;
 	private ITextSelection sel;
-	private static HashSet<IEditorPart> installedOn = new HashSet<IEditorPart>();
+	private static HashMap<IEditorPart, EditorVerifyKeyListener> installedOn = new HashMap<IEditorPart, EditorVerifyKeyListener>();
 	
+	private boolean turnedOn = true;
 	
 	public EditorVerifyKeyListener(IEditorPart editor) {
 		this.installMe(editor);
 	}
 	
 	public static void ensureInstalled(IEditorPart editor) {
-		if (shouldInstall(editor)) {
-			//TODO Don't install if already exists
-			if(installedOn.contains(editor)) {
+		if (shouldInstall(editor)) {	//is it an ISA File?
+			if(installedOn.containsKey(editor)) {	  //Don't install if already installed on
+				EditorVerifyKeyListener ekpl = installedOn.get(editor);
+				ekpl.toggle();		//TODO: Move this to a logical place...  it toggles behavior on/off
 				System.out.println("Already Installed!");
 				return;
 			}
-			installedOn.add(editor);
 			EditorVerifyKeyListener ekpl = new EditorVerifyKeyListener(editor);	
+			installedOn.put(editor, ekpl);
 		}
 	}
 	
@@ -69,6 +77,9 @@ public class EditorVerifyKeyListener implements VerifyKeyListener {
 //			text = target.getTextWidget();
 			
 			text = (StyledText) editor.getAdapter(Control.class);
+			
+			this.boxText = text;  //TODO TESTING THIS, REMOVE LATER
+			
 	    } 
 		if (text != null) {
 			text.addVerifyKeyListener(this);
@@ -100,24 +111,70 @@ public class EditorVerifyKeyListener implements VerifyKeyListener {
 		
 	}
 	
+	
+	private void toggle() {
+		turnedOn = !turnedOn;
+	}
+	
+	
 //	@Override
 //	public void keyPressed(KeyEvent e) {
-//		// TODO Auto-generated method stub
 //		System.out.println("Key pressed: " + e.character);
 //		
 //	}
 //
 //	@Override
 //	public void keyReleased(KeyEvent e) {
-//		// TODO Auto-generated method stub
 //		
 //	}
 
 	@Override
 	public void verifyKey(VerifyEvent event) {
-		// TODO Auto-generated method stub
-		System.out.println("Thing called: " + event.character);
-		event.doit = false;
+		System.out.println("verifyKey called: " + event.character);
+		if (turnedOn) {
+			//TODO: Check if we're actually outside the typing bounds...
+			event.doit = false;
+		}
+		//TODO: Call this somewhere better
+		drawBox(3,5);
+	}
+	
+	
+	//ATTEMPT #1 AT BOX DRAWING
+	//Most of this is stolen from editbox
+	//don't understand what parts of it does
+	private StyledText boxText;
+	
+	public void setStyledText(StyledText newSt) {
+		System.out.println("setStyledText called");
+        this.boxText = newSt;
+	}
+	
+	//start and stop are line numbers to draw the box around, should probably just store them as instance variables...
+	public void drawBox(int start, int stop) {
+		Color c = new Color(null, 200, 120, 255);  //Purple?
+		
+		//big picture: create an image (newImage), edit with the gc, then set as styledtext background later
+		Rectangle r0 = boxText.getClientArea();
+		Image newImage = new Image(null, r0.width, r0.height);
+        GC gc = new GC(newImage);
+        
+        
+        if (turnedOn) {
+        	int startY = boxText.getLocationAtOffset(boxText.getOffsetAtLine(start-1)).y;
+        	int stopY = boxText.getLocationAtOffset(boxText.getOffsetAtLine(stop)).y;
+
+        	gc.setForeground(c);
+        	gc.setLineWidth(2);
+        	gc.drawRectangle(1, startY, r0.width - 4, stopY - startY);
+        }
+        
+        
+        Image oldImage = boxText.getBackgroundImage();  //(so we can null check)
+        boxText.setBackgroundImage(newImage);	//draw our box!  :D
+        if (oldImage != null)
+                oldImage.dispose();   //if we had a box before, clean up after ourselves
+        gc.dispose();
 	}
 
 }
