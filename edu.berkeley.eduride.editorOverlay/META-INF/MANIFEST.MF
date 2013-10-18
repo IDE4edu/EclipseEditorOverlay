@@ -3,8 +3,8 @@ Bundle-ManifestVersion: 2
 Bundle-Name: EditorOverlay
 Bundle-SymbolicName: edu.berkeley.eduride.editorOverlay;singleton:=true
 Bundle-Version: 1.0.0.qualifier
-Bundle-Activator: edu.berkeley.eduride.editoroverlay.Activator
-Bundle-Vendor: Editor Overlay
+Bundle-Activator: edu.berkeley.eduride.editoroverlay.EditorOverlayActivator
+Bundle-Vendor: eduride
 Require-Bundle: org.eclipse.core.runtime,
  org.eclipse.ui,
  EduRideBasePlugin;bundle-version="1.0.2"
