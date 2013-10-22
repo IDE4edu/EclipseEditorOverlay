@@ -28,7 +28,20 @@ public class AllowEditing {
 	}
 
 	private static boolean deleteWithId(IResource resource, String id) {
-		// TODO delete existing markers with same id;
+		//TODO test this method
+		try {
+			IMarker[] findMarkers = resource.findMarkers(MARKER_ID, false, IResource.DEPTH_ZERO);
+			for(int x=0; x < findMarkers.length;x++){
+				if((findMarkers[x].getAttribute("id", null).equals(id))){
+					findMarkers[x].delete();
+				}
+			}
+			return true;
+		} catch (CoreException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return false;
+		}
 	}
 
 	

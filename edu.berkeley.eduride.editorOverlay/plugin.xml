@@ -14,6 +14,12 @@
             id="edu.berkeley.eduride.editorOverlay.installKeyVerifyListener"
             name="Install Key Verify Listener">
       </command>
+      <command
+            categoryId="edu.berkeley.eduride.editorOverlay.category1"
+            defaultHandler="edu.berkeley.eduride.editoroverlay.handlers.InstallMarker"
+            id="edu.berkeley.eduride.editorOverlay.InstallMarker"
+            name="Install Marker">
+      </command>
    </extension>
    <extension
          point="org.eclipse.ui.menus">
@@ -27,6 +33,38 @@
                   label="Install Key Verify Listener"
                   style="push"
                   tooltip="For Editor Plugin">
+            </command>
+         </toolbar>
+      </menuContribution>
+      <menuContribution
+            locationURI="menu:CompilationUnitRulerContext?after=org.eclipse.ui.texteditor.TaskRulerAction">
+         <menu
+               id="edu.berkeley.eduride.menu.CompliationUnitGutter"
+               label="Add Edit Constraint...">
+            <command
+                  commandId="edu.berkeley.eduride.editorOverlay.InstallMarker"
+                  id="Install Marker"
+                  label="Install Marker at Selection"
+                  style="push">
+            </command>
+         </menu>
+         <command
+               commandId="edu.berkeley.eduride.editorOverlay.InstallMarker"
+               id="Install Marker"
+               label="Install Marker..."
+               style="push">
+         </command>
+      </menuContribution>
+      <menuContribution
+            locationURI="toolbar:org.eclipse.ui.main.toolbar?after=additions">
+         <toolbar
+               id="edu.berkeley.eduride.toolbars.main">
+            <command
+                  commandId="edu.berkeley.eduride.editorOverlay.InstallMarker"
+                  icon="icons/RedFlag.jpg"
+                  label="Install Marker at Selection"
+                  style="push"
+                  tooltip="For Editor Markers">
             </command>
          </toolbar>
       </menuContribution>
