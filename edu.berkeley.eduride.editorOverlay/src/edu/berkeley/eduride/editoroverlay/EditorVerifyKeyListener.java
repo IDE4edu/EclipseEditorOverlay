@@ -7,9 +7,17 @@ import org.eclipse.jface.viewers.ISelectionChangedListener;
 import org.eclipse.jface.viewers.ISelectionProvider;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.swt.custom.StyledText;
+import org.eclipse.swt.custom.TextChangeListener;
 import org.eclipse.swt.custom.VerifyKeyListener;
 import org.eclipse.swt.events.KeyEvent;
 import org.eclipse.swt.events.KeyListener;
+import org.eclipse.swt.events.ModifyEvent;
+import org.eclipse.swt.events.ModifyListener;
+import org.eclipse.swt.events.MouseEvent;
+import org.eclipse.swt.events.MouseMoveListener;
+import org.eclipse.swt.events.MouseTrackListener;
+import org.eclipse.swt.events.PaintEvent;
+import org.eclipse.swt.events.PaintListener;
 import org.eclipse.swt.events.VerifyEvent;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.GC;
@@ -23,8 +31,10 @@ import org.eclipse.ui.texteditor.AbstractDecoratedTextEditor;
 import org.eclipse.ui.texteditor.IDocumentProvider;
 import org.eclipse.ui.texteditor.ITextEditor;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 
 public class EditorVerifyKeyListener implements VerifyKeyListener {
 
@@ -33,7 +43,12 @@ public class EditorVerifyKeyListener implements VerifyKeyListener {
 	private ITextSelection sel;
 	private static HashMap<IEditorPart, EditorVerifyKeyListener> installedOn = new HashMap<IEditorPart, EditorVerifyKeyListener>();
 	
-	private boolean turnedOn = true;
+	private ArrayList<MultilineBox> boxList = new ArrayList<MultilineBox>();
+	
+	private boolean turnedOn = false;	//need to toggle this on setup
+	
+	private StyledText boxText;
+	private BoxPaintListener boxPaint;
 	
 	public EditorVerifyKeyListener(IEditorPart editor) {
 		this.installMe(editor);
@@ -41,14 +56,22 @@ public class EditorVerifyKeyListener implements VerifyKeyListener {
 	
 	public static void ensureInstalled(IEditorPart editor) {
 		if (shouldInstall(editor)) {	//is it an ISA File?
+			EditorVerifyKeyListener ekpl;
 			if(installedOn.containsKey(editor)) {	  //Don't install if already installed on
-				EditorVerifyKeyListener ekpl = installedOn.get(editor);
-				ekpl.toggle();		//TODO: Move this to a logical place...  it toggles behavior on/off
+				ekpl = installedOn.get(editor);
 				System.out.println("Already Installed!");
-				return;
+			} else {
+				ekpl = new EditorVerifyKeyListener(editor);	
+				installedOn.put(editor, ekpl);
+				
+				//TODO:  Remove this, testing only!
+				ekpl.boxList.add(new MultilineBox(2, 5));
+				ekpl.boxList.add(new MultilineBox(7, 15, new Color(null, 255,100,100)));
+				//ekpl.boxList.add(new MultilineBox(17, 17, new Color(null, 255,255,100)));
+				//ekpl.boxList.add(new MultilineBox(19, 24, new Color(null, 255,100,255)));
+				//ekpl.boxList.add(new MultilineBox(25, 27, new Color(null, 100,255,160)));
 			}
-			EditorVerifyKeyListener ekpl = new EditorVerifyKeyListener(editor);	
-			installedOn.put(editor, ekpl);
+			ekpl.toggle();  //TODO: Move this to a logical place...  it toggles behavior on/off
 		}
 	}
 	
@@ -78,7 +101,7 @@ public class EditorVerifyKeyListener implements VerifyKeyListener {
 			
 			text = (StyledText) editor.getAdapter(Control.class);
 			
-			this.boxText = text;  //TODO TESTING THIS, REMOVE LATER
+			this.boxText = text;  //TODO Move this somewhere logical?
 			
 	    } 
 		if (text != null) {
@@ -112,22 +135,10 @@ public class EditorVerifyKeyListener implements VerifyKeyListener {
 	}
 	
 	
-	private void toggle() {
-		turnedOn = !turnedOn;
-	}
 	
 	
-//	@Override
-//	public void keyPressed(KeyEvent e) {
-//		System.out.println("Key pressed: " + e.character);
-//		
-//	}
-//
-//	@Override
-//	public void keyReleased(KeyEvent e) {
-//		
-//	}
-
+	//Intercept key presses, if turned on stop key presses
+	//Bug:  Does NOT prevent pasting!
 	@Override
 	public void verifyKey(VerifyEvent event) {
 		System.out.println("verifyKey called: " + event.character);
@@ -136,23 +147,82 @@ public class EditorVerifyKeyListener implements VerifyKeyListener {
 			event.doit = false;
 		}
 		//TODO: Call this somewhere better
-		drawBox(3,5);
+		drawBox();
 	}
+	
+	//TODO: Figure out if we need these listeners or not  (looks like it's working with just paintlistener)
+	//private BoxKeyListener boxKey;
+	//private BoxModifyListener boxModify;
+	//private BoxMouseMoveListener boxMouseMove;
+	//private BoxMouseTrackListener boxMouseTrack;
+	//private BoxTextChangeListener boxTextChange;
+	
+	private void toggle() {
+		if (!turnedOn) {
+			decorate();
+		} else {
+			undecorate();
+		}
+		oldDrawParameters = null;  //hacky... force drawBox to redraw
+		drawBox();
+	}
+	
+	//install various listeners for drawing
+	private void decorate() {
+		if (turnedOn == true) {  //already on!
+			return;
+		}
+		turnedOn = true;
+		
+		//Add Listeners - Think we only need paint!
+        boxPaint = new BoxPaintListener();
+        boxText.addPaintListener(boxPaint);
+	}
+	
+	//stop random listening when turned off
+	private void undecorate() {
+		turnedOn = false;
+		//Stop listeners
+		boxText.removePaintListener(boxPaint);
+	}
+	
+//	private class BoxKeyListener implements KeyListener {
+//		public void keyPressed(KeyEvent e) { }
+//		
+//		public void keyReleased(KeyEvent e) {
+//			drawBox();
+//		}
+//	}
+//	
+//	private class BoxModifyListener implements ModifyListener {		//Can we use modifylistener to fix ctrl+v?
+//		//When text actually changes
+//		public void modifyText(ModifyEvent e) {
+//			drawBox();
+//		}
+//	}
+//	
+//	private class BoxMouseMoveListener implements MouseMoveListener {
+//		public void mouseMove(MouseEvent e) {
+//			drawBox();
+//		}
+//	}
+	
+	private class BoxPaintListener implements PaintListener {
+		@Override
+		public void paintControl(PaintEvent e) {
+			drawBox();
+		}
+	}
+	
 	
 	
 	//ATTEMPT #1 AT BOX DRAWING
 	//Most of this is stolen from editbox
-	//don't understand what parts of it does
-	private StyledText boxText;
 	
-	public void setStyledText(StyledText newSt) {
-		System.out.println("setStyledText called");
-        this.boxText = newSt;
-	}
+	private LinkedList<Integer> oldDrawParameters;  //Stores some set of numbers related to things we're drawing, not for use outside Draw!
 	
 	//start and stop are line numbers to draw the box around, should probably just store them as instance variables...
-	public void drawBox(int start, int stop) {
-		Color c = new Color(null, 200, 120, 255);  //Purple?
+	public void drawBox() {
 		
 		//big picture: create an image (newImage), edit with the gc, then set as styledtext background later
 		Rectangle r0 = boxText.getClientArea();
@@ -160,15 +230,35 @@ public class EditorVerifyKeyListener implements VerifyKeyListener {
         GC gc = new GC(newImage);
         
         
-        if (turnedOn) {
-        	int startY = boxText.getLocationAtOffset(boxText.getOffsetAtLine(start-1)).y;
-        	int stopY = boxText.getLocationAtOffset(boxText.getOffsetAtLine(stop)).y;
-
-        	gc.setForeground(c);
-        	gc.setLineWidth(2);
-        	gc.drawRectangle(1, startY, r0.width - 4, stopY - startY);
-        }
         
+        //Do we need to redraw?
+        LinkedList<Integer> params = new LinkedList<Integer>();
+        params.add(r0.width);
+        for (MultilineBox b : boxList) {
+        	//params.add(boxText.getLocationAtOffset(boxText.getOffsetAtLine(b.start()-1)).y);
+        	//params.add(boxText.getLocationAtOffset(boxText.getOffsetAtLine(b.stop())).y);
+        	params.add(boxText.getLinePixel(b.start()-1));
+        	params.add(boxText.getLinePixel(b.stop()));
+        }
+        if (params.equals(oldDrawParameters)) {
+        	return;  //short circuit!
+        }
+        oldDrawParameters = params;  //save state of last draw
+        
+        
+        
+        if (turnedOn) {
+        	
+    		gc.setLineWidth(2);
+        	
+        	for (MultilineBox b : boxList) {
+        		int startY = boxText.getLinePixel(b.start()-1);
+        		int stopY = boxText.getLinePixel(b.stop());
+
+        		gc.setForeground(b.color);
+        		gc.drawRectangle(1, startY, r0.width - 4, stopY - startY);
+        	}
+        }
         
         Image oldImage = boxText.getBackgroundImage();  //(so we can null check)
         boxText.setBackgroundImage(newImage);	//draw our box!  :D
