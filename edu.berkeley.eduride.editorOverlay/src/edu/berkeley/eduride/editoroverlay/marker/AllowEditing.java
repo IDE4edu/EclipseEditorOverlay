@@ -30,17 +30,15 @@ public class AllowEditing {
 		}
 	}
 
-	public static IMarker[] getInlineMarkers(IResource res) {
-		IMarker[] ret = new IMarker[0];
-		int ri = 0;
+	public static List<IMarker> getInlineMarkers(IResource res) {
+		ArrayList<IMarker> ret = new ArrayList<IMarker>();
 		try {
 			IMarker[] marks = res.findMarkers(MARKER_ID, false,
 					IResource.DEPTH_ZERO);
 			for (int mi = 0; mi < marks.length; mi++) {
 				String thetype = (marks[mi].getAttribute("thetype", null));
 				if (thetype != null && thetype.equals(INLINE)) {
-					ret[ri] = marks[mi];
-					ri++;
+					ret.add(marks[mi]);
 				}
 			}
 			return ret;
@@ -53,17 +51,18 @@ public class AllowEditing {
 
 	// returns an array of inner arrays where START marker is [0] and END
 	// marker is [1]
-	public static IMarker[][] getMultilineMarkers(IResource res) {
-		IMarker[][] ret = new IMarker[0][0];
-		int ri = 0;	
+	public static List<IMarker[]> getMultilineMarkers(IResource res) {
+		ArrayList<IMarker[]> ret = new ArrayList<IMarker[]>();
 		try {
 			HashMap<String, IMarker[]> hm = new HashMap<String, IMarker[]>();
 			IMarker[] marks = res.findMarkers(MARKER_ID, false, IResource.DEPTH_ZERO);
 			for(int mi=0; mi < marks.length; mi++){
 				int thetype = (marks[mi].getAttribute("thetype", -1));
 				String id = (marks[mi].getAttribute("id", ""));
-				if (!(hm.containsKey(id))) {
-					hm.put(id,  new IMarker[2]);
+				if (thetype == START || thetype == STOP) {
+					if (!(hm.containsKey(id))) {
+						hm.put(id,  new IMarker[2]);
+					}
 				}
 				if (thetype == START) {
 					hm.get(id)[0] = marks[mi];
@@ -72,11 +71,13 @@ public class AllowEditing {
 				}
 			}
 			
-			// build  IMarker[][] from HashMap
+			// build  ArrayList<IMarker[]> from HashMap
 			for (IMarker[] m : hm.values()) {
 				if (m[0] != null && m[1] != null) {
-					ret[ri] = m;
-					ri++;
+					ret.add(m);
+				} else if (m[0] == null && m[1] == null) {
+					// hm, this is ok...  it must have been an inline marker we saw
+					// TODO this can be removed now -- only add to HashMap if type is START or STOP
 				} else {
 					String id = "unknown";
 					if (m[0] != null) {
