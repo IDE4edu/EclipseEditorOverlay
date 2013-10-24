@@ -1,6 +1,7 @@
 package edu.berkeley.eduride.editoroverlay;
 
 import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IResource;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.ITextSelection;
 import org.eclipse.jface.viewers.ISelectionChangedListener;
@@ -26,10 +27,13 @@ import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IEditorPart;
+import org.eclipse.ui.ide.ResourceUtil;
 import org.eclipse.ui.part.FileEditorInput;
 import org.eclipse.ui.texteditor.AbstractDecoratedTextEditor;
 import org.eclipse.ui.texteditor.IDocumentProvider;
 import org.eclipse.ui.texteditor.ITextEditor;
+
+import edu.berkeley.eduride.editoroverlay.marker.AllowEditing;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -70,6 +74,14 @@ public class EditorVerifyKeyListener implements VerifyKeyListener {
 				//ekpl.boxList.add(new MultilineBox(17, 17, new Color(null, 255,255,100)));
 				//ekpl.boxList.add(new MultilineBox(19, 24, new Color(null, 255,100,255)));
 				//ekpl.boxList.add(new MultilineBox(25, 27, new Color(null, 100,255,160)));
+				
+				IResource res = ResourceUtil.getResource(editor.getEditorInput());
+				if (res != null) {	
+					System.out.println("making inline");
+					AllowEditing.createInLine(res, 10, 5, 25, "yeah");
+					System.out.println("making multiline");
+					AllowEditing.createMultiLine(res, 12, 16, "yeah2");
+				}
 			}
 			ekpl.toggle();  //TODO: Move this to a logical place...  it toggles behavior on/off
 		}
