@@ -70,8 +70,19 @@
       </menuContribution>
    </extension>
    <extension
-         id="allowediting"
-         name="EduRide Allow Editing Marker"
+         id="inline"
+         name="EduRide inline allow editing marker"
+         point="org.eclipse.core.resources.markers">
+      <super
+            type="org.eclipse.core.resources.textmarker">
+      </super>
+      <persistent
+            value="true">
+      </persistent>
+   </extension>
+   <extension
+         id="start"
+         name="EduRide inline allow editing marker"
          point="org.eclipse.core.resources.markers">
       <super
             type="org.eclipse.core.resources.textmarker">
@@ -80,11 +91,55 @@
             value="true">
       </persistent>
       <attribute
-            name="thetype">
+            name="edu.berkeley.eduride.editorOverlay.id">
       </attribute>
+   </extension>
+   <extension
+         id="stop"
+         name="EduRide inline allow editing marker"
+         point="org.eclipse.core.resources.markers">
+      <super
+            type="org.eclipse.core.resources.textmarker">
+      </super>
+      <persistent
+            value="true">
+      </persistent>
       <attribute
-            name="id">
+            name="edu.berkeley.eduride.editorOverlay.id">
       </attribute>
+   </extension>
+   <extension
+         point="org.eclipse.ui.editors.annotationTypes">
+      <type
+            markerType="edu.berkeley.eduride.editorOverlay.inline"
+            name="edu.berkeley.eduride.editorOverlay.inline">
+      </type>
+      <type
+            markerType="edu.berkeley.eduride.editorOverlay.start"
+            name="edu.berkeley.eduride.editorOverlay.start">
+      </type>
+      <type
+            markerType="edu.berkeley.eduride.editorOverlay.stop"
+            name="edu.berkeley.eduride.editorOverlay.stop">
+      </type>
+   </extension>
+   <extension
+         point="org.eclipse.ui.editors.markerAnnotationSpecification">
+      <specification
+            annotationType="edu.berkeley.eduride.editorOverlay.inline"
+            includeOnPreferencePage="true"
+            label="EduRide inline marker">
+      </specification>
+      <specification
+            annotationType="edu.berkeley.eduride.editorOverlay.start"
+            includeOnPreferencePage="true"
+            label="EduRide start marker">
+      </specification>
+      <specification
+            annotationType="edu.berkeley.eduride.editorOverlay.stop"
+            includeOnPreferencePage="true"
+            label="EduRide stopmarker">
+      </specification>
    </extension>
 
 </plugin>

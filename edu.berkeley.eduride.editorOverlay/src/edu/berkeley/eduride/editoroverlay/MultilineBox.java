@@ -3,7 +3,7 @@ package edu.berkeley.eduride.editoroverlay;
 import org.eclipse.core.resources.IMarker;
 import org.eclipse.swt.graphics.Color;
 
-import edu.berkeley.eduride.editoroverlay.marker.AllowEditing;
+import edu.berkeley.eduride.editoroverlay.marker.Util;
 
 public class MultilineBox {
 	//start and stop are the line numbers corresponding to where user can type
@@ -23,18 +23,18 @@ public class MultilineBox {
 
 	//getter for start
 	int start() {
-		return AllowEditing.getLineNumber(start);	//TODO: make sure this works with AllowEditing's line number fetching
+		return Util.getLineNumber(start);	//TODO: make sure this works with AllowEditing's line number fetching
 	}
 	
 	//getter for stop
 	int stop() {
-		return AllowEditing.getLineNumber(stop);
+		return Util.getLineNumber(stop);
 	}
 	
 	public String toString() {
 		String toReturn;
-		toReturn = "Start: " + start + ", Line: " + AllowEditing.getLineNumber(start);
-		toReturn += "\nStop: " + stop + ", Line: " + AllowEditing.getLineNumber(stop);
+		toReturn = "Start: " + start + ", Line: " + Util.getLineNumber(start);
+		toReturn += "\nStop: " + stop + ", Line: " + Util.getLineNumber(stop);
 		return toReturn;
 	}
 }
