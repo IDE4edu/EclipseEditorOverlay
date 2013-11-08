@@ -147,7 +147,7 @@ public class Util {
 		Iterator<Annotation> it = am.getAnnotationIterator();
 		while (it.hasNext()) {
 			Annotation annotation = it.next();
-			if (annotation.getType() == INLINE_ANNOTATIONID) {
+			if (annotation.getType().equals(INLINE_ANNOTATIONID)) {
 				annotations.add(annotation);
 			}
 		}

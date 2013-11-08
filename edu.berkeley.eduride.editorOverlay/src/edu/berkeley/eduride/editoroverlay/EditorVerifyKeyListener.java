@@ -10,9 +10,12 @@ import org.eclipse.jface.text.TextViewer;
 import org.eclipse.jface.text.source.Annotation;
 import org.eclipse.jface.text.source.IAnnotationModel;
 import org.eclipse.jface.text.source.ISourceViewer;
+import org.eclipse.jface.text.source.SourceViewer;
 import org.eclipse.jface.viewers.ISelectionChangedListener;
 import org.eclipse.jface.viewers.ISelectionProvider;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
+import org.eclipse.swt.custom.CaretEvent;
+import org.eclipse.swt.custom.CaretListener;
 import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.custom.VerifyKeyListener;
 import org.eclipse.swt.events.PaintEvent;
@@ -52,6 +55,7 @@ public class EditorVerifyKeyListener implements VerifyKeyListener {
 	private StyledText boxText;
 	private BoxPaintListener boxPaint;
 	IResource res;
+	int caretOffset = 0;
 	
 	public EditorVerifyKeyListener(IEditorPart editor) {
 		this.installMe(editor);
@@ -148,8 +152,15 @@ public class EditorVerifyKeyListener implements VerifyKeyListener {
 	public void verifyKey(VerifyEvent event) {
 		System.out.println("verifyKey called: " + event.character);
 		if (turnedOn) {
-			//TODO: Check if we're actually outside the typing bounds...
-			event.doit = false;
+			boolean allowed = false;
+			int offset = caretOffset;
+			for (MultilineBox b : boxList) {
+				if ((offset >= b.startOffset()) && (offset <= b.stopOffset())) {
+					allowed = true;
+					break;
+				}
+			}
+			event.doit = allowed;
 		}
 	}
 	
@@ -174,6 +185,8 @@ public class EditorVerifyKeyListener implements VerifyKeyListener {
 		//Add Listeners - Think we only need paint!
         boxPaint = new BoxPaintListener();
         boxText.addPaintListener(boxPaint);
+        CaretListener caretListener = new CaretPositionListener();
+        boxText.addCaretListener(caretListener);
 	}
 	
 	//stop listening when turned off
@@ -187,6 +200,14 @@ public class EditorVerifyKeyListener implements VerifyKeyListener {
 		@Override
 		public void paintControl(PaintEvent e) {
 			drawBox();
+		}
+	}
+	
+	private class CaretPositionListener implements CaretListener {
+
+		@Override
+		public void caretMoved(CaretEvent event) {
+			caretOffset = event.caretOffset;
 		}
 	}
 	
@@ -259,7 +280,7 @@ public class EditorVerifyKeyListener implements VerifyKeyListener {
         		//int stopY = boxText.getLinePixel(b.stop());
         		
         		int startY = boxText.getLocationAtOffset(b.startOffset()).y;  //start is offset, not line number
-        		int stopY = boxText.getLocationAtOffset(b.stopOffset()).y + boxText.getLineHeight();
+        		int stopY = boxText.getLocationAtOffset(b.stopOffset()).y; // + boxText.getLineHeight();
 
         		gc.setForeground(b.color);
         		gc.drawRectangle(1, startY, r0.width - 4, stopY - startY);
