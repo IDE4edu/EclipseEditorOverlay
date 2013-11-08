@@ -3,25 +3,21 @@ package edu.berkeley.eduride.editoroverlay;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IResource;
+import org.eclipse.jdt.internal.ui.javaeditor.CompilationUnitEditor;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.ITextSelection;
+import org.eclipse.jface.text.TextViewer;
+import org.eclipse.jface.text.source.Annotation;
+import org.eclipse.jface.text.source.IAnnotationModel;
+import org.eclipse.jface.text.source.ISourceViewer;
 import org.eclipse.jface.viewers.ISelectionChangedListener;
 import org.eclipse.jface.viewers.ISelectionProvider;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.swt.custom.StyledText;
-import org.eclipse.swt.custom.TextChangeListener;
 import org.eclipse.swt.custom.VerifyKeyListener;
-import org.eclipse.swt.events.KeyEvent;
-import org.eclipse.swt.events.KeyListener;
-import org.eclipse.swt.events.ModifyEvent;
-import org.eclipse.swt.events.ModifyListener;
-import org.eclipse.swt.events.MouseEvent;
-import org.eclipse.swt.events.MouseMoveListener;
-import org.eclipse.swt.events.MouseTrackListener;
 import org.eclipse.swt.events.PaintEvent;
 import org.eclipse.swt.events.PaintListener;
 import org.eclipse.swt.events.VerifyEvent;
-import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Rectangle;
@@ -34,11 +30,11 @@ import org.eclipse.ui.texteditor.AbstractDecoratedTextEditor;
 import org.eclipse.ui.texteditor.IDocumentProvider;
 import org.eclipse.ui.texteditor.ITextEditor;
 
-import edu.berkeley.eduride.editoroverlay.marker.AllowEditing;
+import edu.berkeley.eduride.editoroverlay.marker.Util;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -71,19 +67,13 @@ public class EditorVerifyKeyListener implements VerifyKeyListener {
 				ekpl = new EditorVerifyKeyListener(editor);	
 				installedOn.put(editor, ekpl);
 				
-				//TODO:  Remove this, testing only!
-				//ekpl.boxList.add(new MultilineBox(2, 5));
-				//ekpl.boxList.add(new MultilineBox(7, 15, new Color(null, 255,100,100)));
-				//ekpl.boxList.add(new MultilineBox(17, 17, new Color(null, 255,255,100)));
-				//ekpl.boxList.add(new MultilineBox(19, 24, new Color(null, 255,100,255)));
-				//ekpl.boxList.add(new MultilineBox(25, 27, new Color(null, 100,255,160)));
-				
 				ekpl.res = ResourceUtil.getResource(editor.getEditorInput());
 				if (ekpl.res != null) {	
 					System.out.println("making inline");
-					AllowEditing.createInLine(ekpl.res, 10, 5, 25, "yeah");
+					Util.createInlineMarker(ekpl.res, 10, 5, 25, "yeah");
 					System.out.println("making multiline");
-					AllowEditing.createMultiLine(ekpl.res, 12, 16, "yeah2");
+					Util.createMultiLine(ekpl.res, 12, 20, "yeah2");
+					Util.createMultiLine(ekpl.res, 22, 25, "box3");
 				}
 			}
 			ekpl.toggle();  //TODO: Move this to a logical place...  it toggles behavior on/off
@@ -116,7 +106,7 @@ public class EditorVerifyKeyListener implements VerifyKeyListener {
 			
 			text = (StyledText) editor.getAdapter(Control.class);
 			
-			this.boxText = text;  //TODO Move this somewhere logical?
+			this.boxText = text;
 			
 	    } 
 		if (text != null) {
@@ -161,8 +151,6 @@ public class EditorVerifyKeyListener implements VerifyKeyListener {
 			//TODO: Check if we're actually outside the typing bounds...
 			event.doit = false;
 		}
-		//TODO: Call this somewhere better
-		drawBox();
 	}
 	
 	private void toggle() {
@@ -205,15 +193,29 @@ public class EditorVerifyKeyListener implements VerifyKeyListener {
 	
 	//Find all markers on res, store them as pairs in boxes in boxList
 	private void createBoxListFromMarkers() {
-		List<IMarker[]> multiline = AllowEditing.getMultilineMarkers(res);   //TODO:  Check this with AllowEditing's methods
+		ISourceViewer viewer = ((CompilationUnitEditor) editor).getViewer();
+		IAnnotationModel annotationModel = viewer.getAnnotationModel();
+		
+		//viewer.getVerticalRuler();  //i want a ruler  :(
+		
+		List<Annotation[]> multiline = Util.getMultilineAnnotations(annotationModel);
 		MultilineBox b;
-		int start, stop;
-		for (int i = 0; i < multiline.size(); i++) {
-			b = new MultilineBox(multiline.get(i)[0], multiline.get(i)[1]);
-			boxList.add(b);
+		
+		Iterator<Annotation> annotations = annotationModel.getAnnotationIterator();
+		while (annotations.hasNext()) {
+			System.out.println(annotations.next().getType());
 		}
 		
-		List<IMarker> inline = AllowEditing.getInlineMarkers(res);
+		for (int i = 0; i < multiline.size(); i++) {
+			b = new MultilineBox(annotationModel, multiline.get(i)[0], multiline.get(i)[1]);
+			boxList.add(b);
+			
+			System.out.println("No Crash");
+			System.out.println(b);
+		}
+		System.out.println("Done with for loop");
+		
+		List<IMarker> inline = Util.getInlineMarkers(res);
 		//TODO: Storage and drawing for inline markers
 	}
 	
@@ -227,22 +229,19 @@ public class EditorVerifyKeyListener implements VerifyKeyListener {
 	
 	//draws boxes from boxList
 	public void drawBox() {
-		
 		//big picture: create an image (newImage), edit with the gc, then set as styledtext background later
 		Rectangle r0 = boxText.getClientArea();
 		Image newImage = new Image(null, r0.width, r0.height);
         GC gc = new GC(newImage);
-        
-        
         
         //Do we need to redraw?
         LinkedList<Integer> params = new LinkedList<Integer>();
         params.add(r0.width);
         for (MultilineBox b : boxList) {
         	//params.add(boxText.getLocationAtOffset(boxText.getOffsetAtLine(b.start()-1)).y);
-        	//params.add(boxText.getLocationAtOffset(boxText.getOffsetAtLine(b.stop())).y);
-        	params.add(boxText.getLinePixel(b.start()-1));
-        	params.add(boxText.getLinePixel(b.stop()));
+        	//params.add(boxText.getLinePixel(b.start()-1));
+        	params.add(boxText.getLocationAtOffset(b.startOffset()).y);
+        	params.add(boxText.getLocationAtOffset(b.stopOffset()).y);
         }
         if (params.equals(oldDrawParameters)) {
         	return;  //short circuit!
@@ -256,8 +255,11 @@ public class EditorVerifyKeyListener implements VerifyKeyListener {
     		gc.setLineWidth(2);
         	
         	for (MultilineBox b : boxList) {
-        		int startY = boxText.getLinePixel(b.start()-1);
-        		int stopY = boxText.getLinePixel(b.stop());
+        		//int startY = boxText.getLinePixel(b.start()-1);  //for dealing with line numbers, not offsets
+        		//int stopY = boxText.getLinePixel(b.stop());
+        		
+        		int startY = boxText.getLocationAtOffset(b.startOffset()).y;  //start is offset, not line number
+        		int stopY = boxText.getLocationAtOffset(b.stopOffset()).y + boxText.getLineHeight();
 
         		gc.setForeground(b.color);
         		gc.drawRectangle(1, startY, r0.width - 4, stopY - startY);

@@ -217,16 +217,16 @@ public class Util {
 		Iterator<Annotation> it = am.getAnnotationIterator();
 		while (it.hasNext()) {
 			Annotation annotation = it.next();
-			if (annotation.getType() == START_ANNOTATIONID) {
+			if (annotation.getType().equals(START_ANNOTATIONID)) {  //kim changed == to .equals
 				startannotations.add(annotation);
-			} else if (annotation.getType() == STOP_ANNOTATIONID) {
+			} else if (annotation.getType().equals(STOP_ANNOTATIONID)) {  //== to .equals
 				stopannotations.add(annotation);
 			}
 		}
 		for (Annotation startannotation : startannotations) {
 			String startannid = startannotation.getText();
 			for (Annotation stopannotation : stopannotations) {
-				if (stopannotation.getText() == startannid) {
+				if (stopannotation.getText().equals(startannid)) {   //== to .equals
 					Annotation[] arr = new Annotation[2];
 					arr[0] = startannotation;
 					arr[1] = stopannotation;
