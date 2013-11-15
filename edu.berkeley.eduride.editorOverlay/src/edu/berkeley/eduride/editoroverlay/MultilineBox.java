@@ -1,12 +1,9 @@
 package edu.berkeley.eduride.editoroverlay;
 
-import org.eclipse.core.resources.IMarker;
 import org.eclipse.jface.text.source.Annotation;
 import org.eclipse.jface.text.source.IAnnotationModel;
 import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.graphics.Color;
-
-import edu.berkeley.eduride.editoroverlay.marker.Util;
 
 public class MultilineBox {
 	//start and stop are the line numbers corresponding to where user can type

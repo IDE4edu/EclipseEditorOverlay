@@ -6,6 +6,7 @@ import org.eclipse.core.resources.IResource;
 import org.eclipse.jdt.internal.ui.javaeditor.CompilationUnitEditor;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.ITextSelection;
+import org.eclipse.jface.text.ITextViewerExtension5;
 import org.eclipse.jface.text.TextViewer;
 import org.eclipse.jface.text.source.Annotation;
 import org.eclipse.jface.text.source.IAnnotationModel;
@@ -36,6 +37,7 @@ import org.eclipse.ui.texteditor.ITextEditor;
 import edu.berkeley.eduride.editoroverlay.marker.Util;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -255,35 +257,62 @@ public class EditorVerifyKeyListener implements VerifyKeyListener {
 		Image newImage = new Image(null, r0.width, r0.height);
         GC gc = new GC(newImage);
         
+        
+        ISourceViewer v = ((CompilationUnitEditor) editor).getViewer();
+		ITextViewerExtension5 itve5 = (ITextViewerExtension5)v;   //we can use this to get line numbers w/ folding
+		
+        
         //Do we need to redraw?
+		//Idea: Throw a bunch of numbers in some list, and see if it changes from one to another
         LinkedList<Integer> params = new LinkedList<Integer>();
         params.add(r0.width);
         for (MultilineBox b : boxList) {
         	//params.add(boxText.getLocationAtOffset(boxText.getOffsetAtLine(b.start()-1)).y);
         	//params.add(boxText.getLinePixel(b.start()-1));
-        	params.add(boxText.getLocationAtOffset(b.startOffset()).y);
-        	params.add(boxText.getLocationAtOffset(b.stopOffset()).y);
+        	
+        	//params.add(boxText.getLocationAtOffset(b.startOffset()).y);
+        	//params.add(boxText.getLocationAtOffset(b.stopOffset()).y);
+        	try {
+        		int startWidgetOffset = itve5.modelOffset2WidgetOffset(b.startOffset());
+        		params.add(boxText.getLocationAtOffset(startWidgetOffset).y);
+        		int stopWidgetOffset = itve5.modelOffset2WidgetOffset(b.stopOffset());
+        		params.add(boxText.getLocationAtOffset(stopWidgetOffset).y);
+        	} catch (Exception e) {
+        		params.add(-1);  //one of the endpoints is folded
+        	}
         }
         if (params.equals(oldDrawParameters)) {
-        	return;  //short circuit!
+        	return;  //short circuit if we don't need to redraw
         }
         oldDrawParameters = params;  //save state of last draw
         
         
+        System.out.println(Arrays.toString(itve5.getCoveredModelRanges(itve5.getModelCoverage())));
         
         if (turnedOn) {
-        	
     		gc.setLineWidth(2);
         	
         	for (MultilineBox b : boxList) {
         		//int startY = boxText.getLinePixel(b.start()-1);  //for dealing with line numbers, not offsets
         		//int stopY = boxText.getLinePixel(b.stop());
         		
-        		int startY = boxText.getLocationAtOffset(b.startOffset()).y;  //start is offset, not line number
-        		int stopY = boxText.getLocationAtOffset(b.stopOffset()).y; // + boxText.getLineHeight();
+        		//int startY = boxText.getLocationAtOffset(b.startOffset()).y;  //start is offset, not line number
+        		//int stopY = boxText.getLocationAtOffset(b.stopOffset()).y; // + boxText.getLineHeight();
 
-        		gc.setForeground(b.color);
-        		gc.drawRectangle(1, startY, r0.width - 4, stopY - startY);
+        		try {
+        			int startWidgetOffset = itve5.modelOffset2WidgetOffset(b.startOffset());
+        			int startY = boxText.getLocationAtOffset(startWidgetOffset).y;
+        		
+        			int stopWidgetOffset = itve5.modelOffset2WidgetOffset(b.stopOffset());
+        			int stopY = boxText.getLocationAtOffset(stopWidgetOffset).y;
+        			
+        			gc.setForeground(b.color);
+            		gc.drawRectangle(1, startY, r0.width - 4, stopY - startY);
+        		} catch (Exception e) {
+        			System.out.println("Need to handle folding here");
+        			//TODO: Folding edge cases, one or both markers inside of folded regions
+        			//System.out.println(Arrays.toString(itve5.getCoveredModelRanges(itve5.getModelCoverage())));
+        		}
         	}
         }
         
