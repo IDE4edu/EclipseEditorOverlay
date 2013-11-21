@@ -5,6 +5,7 @@ import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.jdt.internal.ui.javaeditor.CompilationUnitEditor;
 import org.eclipse.jface.text.IDocument;
+import org.eclipse.jface.text.IRegion;
 import org.eclipse.jface.text.ITextSelection;
 import org.eclipse.jface.text.ITextViewerExtension5;
 import org.eclipse.jface.text.TextViewer;
@@ -288,6 +289,7 @@ public class EditorVerifyKeyListener implements VerifyKeyListener {
         
         
         System.out.println(Arrays.toString(itve5.getCoveredModelRanges(itve5.getModelCoverage())));
+        IRegion[] visibleRegions = itve5.getCoveredModelRanges(itve5.getModelCoverage());
         
         if (turnedOn) {
     		gc.setLineWidth(2);
@@ -299,20 +301,44 @@ public class EditorVerifyKeyListener implements VerifyKeyListener {
         		//int startY = boxText.getLocationAtOffset(b.startOffset()).y;  //start is offset, not line number
         		//int stopY = boxText.getLocationAtOffset(b.stopOffset()).y; // + boxText.getLineHeight();
 
-        		try {
-        			int startWidgetOffset = itve5.modelOffset2WidgetOffset(b.startOffset());
-        			int startY = boxText.getLocationAtOffset(startWidgetOffset).y;
-        		
-        			int stopWidgetOffset = itve5.modelOffset2WidgetOffset(b.stopOffset());
-        			int stopY = boxText.getLocationAtOffset(stopWidgetOffset).y;
-        			
-        			gc.setForeground(b.color);
-            		gc.drawRectangle(1, startY, r0.width - 4, stopY - startY);
-        		} catch (Exception e) {
-        			System.out.println("Need to handle folding here");
-        			//TODO: Folding edge cases, one or both markers inside of folded regions
-        			//System.out.println(Arrays.toString(itve5.getCoveredModelRanges(itve5.getModelCoverage())));
-        		}
+    			int startWidgetOffset = itve5.modelOffset2WidgetOffset(b.startOffset());
+    			int stopWidgetOffset = itve5.modelOffset2WidgetOffset(b.stopOffset());
+
+    			System.out.println("start: " + startWidgetOffset + ", stop: " + stopWidgetOffset);
+    			
+    			int index = 0;
+    			
+    			if (startWidgetOffset == -1) {   //start marker is folded, recompute
+    				System.out.println("new start");
+    				startWidgetOffset = b.startOffset();
+    				while ((index < visibleRegions.length) && (startWidgetOffset >= visibleRegions[index].getOffset())) {
+    					index++;
+    				}
+    				
+    				startWidgetOffset = visibleRegions[index].getOffset();
+    				if (b.stopOffset() < startWidgetOffset) {	//no region to draw, stop found before start
+    					System.out.println("full box folded");
+    					continue;
+    				}
+    				startWidgetOffset = itve5.modelOffset2WidgetOffset(startWidgetOffset);
+    			}
+    			
+    			if (stopWidgetOffset == -1) {  //stop marker is folded, recompute
+    				System.out.println("new end");
+    				stopWidgetOffset = b.stopOffset();
+    				while ((index < visibleRegions.length) && (stopWidgetOffset < visibleRegions[index].getOffset() - visibleRegions[index].getLength())) {
+    					index++;
+    				}
+    				index++;
+    				stopWidgetOffset = visibleRegions[index].getOffset();
+    				stopWidgetOffset = itve5.modelOffset2WidgetOffset(stopWidgetOffset);
+    			}
+
+    			int startY = boxText.getLocationAtOffset(startWidgetOffset).y;
+    			int stopY = boxText.getLocationAtOffset(stopWidgetOffset).y;
+    			
+    			gc.setForeground(b.color);
+        		gc.drawRectangle(1, startY, r0.width - 4, stopY - startY);
         	}
         }
         
