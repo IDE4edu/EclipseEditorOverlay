@@ -44,34 +44,43 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
-public class EditorVerifyKeyListener implements VerifyKeyListener {
+// one of these per editor that can be constrained by our boxes!
+public class BoxConstrainedEditorOverlay  {
 
 	private ITextEditor editor;
 	private IDocument doc;
 	private ITextSelection sel;
-	private static HashMap<IEditorPart, EditorVerifyKeyListener> installedOn = new HashMap<IEditorPart, EditorVerifyKeyListener>();
+	private static HashMap<IEditorPart, BoxConstrainedEditorOverlay> installedOn = new HashMap<IEditorPart, BoxConstrainedEditorOverlay>();
+    ISourceViewer srcViewer;
+    ITextViewerExtension5 srcViewerE5;
+		
+
 	
-	private ArrayList<MultilineBox> boxList = new ArrayList<MultilineBox>();
+	
+	private ArrayList<MultilineBox> multilineBoxes = new ArrayList<MultilineBox>();
 	
 	private boolean turnedOn = false;	//need to toggle this on setup
 	
-	private StyledText boxText;
+	private StyledText styledText;
 	private BoxPaintListener boxPaint;
+	private CaretListener caretListener;
+	private EditorOverlayVerifyKeyListener verifyKeyListener;
 	IResource res;
 	int caretOffset = 0;
 	
-	public EditorVerifyKeyListener(IEditorPart editor) {
+	public BoxConstrainedEditorOverlay(IEditorPart editor) {
 		this.installMe(editor);
 	}
 	
-	public static void ensureInstalled(IEditorPart editor) {
+	
+	public static BoxConstrainedEditorOverlay ensureInstalled(IEditorPart editor) {
 		if (shouldInstall(editor)) {	//is it an ISA File?
-			EditorVerifyKeyListener ekpl;
+			BoxConstrainedEditorOverlay ekpl;
 			if(installedOn.containsKey(editor)) {	  //Don't install if already installed on
 				ekpl = installedOn.get(editor);
 				System.out.println("Already Installed!");
 			} else {
-				ekpl = new EditorVerifyKeyListener(editor);	
+				ekpl = new BoxConstrainedEditorOverlay(editor);	
 				installedOn.put(editor, ekpl);
 				
 				ekpl.res = ResourceUtil.getResource(editor.getEditorInput());
@@ -83,9 +92,11 @@ public class EditorVerifyKeyListener implements VerifyKeyListener {
 					Util.createMultiLine(ekpl.res, 22, 25, "box3");
 				}
 			}
-			ekpl.toggle();  //TODO: Move this to a logical place...  it toggles behavior on/off
+			return ekpl;
 		}
+		return null;
 	}
+	
 	
 	public static boolean shouldInstall(IEditorPart editor) {
 		// first, needs to be a text editor -- we only care about java, though
@@ -100,24 +111,17 @@ public class EditorVerifyKeyListener implements VerifyKeyListener {
 		return false;
 	}
 	
+	
+	
 	public void installMe(IEditorPart editor) {
 		StyledText text = null;
 		// PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage().getEditors()
 		if (editor != null) {
-//			if only I could import the internal package, sigh
-//			if (editor instanceof JavaEditor) {
-//				text = editor.getViewer().getTextWidget();
-//			}
-//			ITextOperationTarget target = (ITextOperationTarget)editorPart.getAdapter(ITextOperationTarget.class);
-//			text = target.getTextWidget();
-			
 			text = (StyledText) editor.getAdapter(Control.class);
-			
-			this.boxText = text;
+			this.styledText = text;
 			
 	    } 
 		if (text != null) {
-			text.addVerifyKeyListener(this);
 //			log("loggerInstall", "KeyPressInEditor installed in " + editor.getTitle());
 			this.editor = (ITextEditor) editor;
 			IDocumentProvider dp = this.editor.getDocumentProvider();
@@ -125,58 +129,52 @@ public class EditorVerifyKeyListener implements VerifyKeyListener {
 			ISelectionProvider sp = this.editor.getSelectionProvider();
 			this.sel = (ITextSelection) sp.getSelection();
 			sp.addSelectionChangedListener(new selChanged(this));
+			
+		    srcViewer = ((CompilationUnitEditor) editor).getViewer();
+			srcViewerE5 = (ITextViewerExtension5)srcViewer;   //we can use this to get line numbers w/ folding
+				
+		 
 		} else {
 			System.out.println("loggerInstall " + "EditorVerifyKeyListener failed to installed in " + editor.getTitle());
 		}
 
 	}
 	
+
+	
+	// This keeps the last selection around, but it is currently unused.
 	private class selChanged implements ISelectionChangedListener {
 
-		EditorVerifyKeyListener kpie;
+		BoxConstrainedEditorOverlay ed;
 		
-		public selChanged(EditorVerifyKeyListener kpie) {
-			this.kpie = kpie;
+		public selChanged(BoxConstrainedEditorOverlay kpie) {
+			this.ed = kpie;
 		}
 		
 		@Override
 		public void selectionChanged(SelectionChangedEvent event) {
-			kpie.sel = (ITextSelection) event.getSelection();
+			ed.sel = (ITextSelection) event.getSelection();
 		}
 		
 	}
 	
 	
+	////////////////////
+	/////////// OVERLAY CONTROLS
 	
 	
-	//Intercept key presses, if turned on stop key presses
-	//Bug:  Does NOT prevent pasting!
-	@Override
-	public void verifyKey(VerifyEvent event) {
-		System.out.println("verifyKey called: " + event.character);
-		if (turnedOn) {
-			boolean allowed = false;
-			int offset = caretOffset;
-			for (MultilineBox b : boxList) {
-				if ((offset >= b.startOffset()) && (offset <= b.stopOffset())) {
-					allowed = true;
-					break;
-				}
-			}
-			event.doit = allowed;
-		}
-	}
 	
-	private void toggle() {
+	public void toggle() {
 		if (!turnedOn) {
-			createBoxListFromMarkers();
+			createBoxes();
 			decorate();
 		} else {
 			undecorate();
 		}
-		oldDrawParameters = null;  //hacky... force drawBox to redraw
-		drawBox();
 	}
+	
+	
+
 	
 	//install any listeners for drawing
 	private void decorate() {
@@ -185,24 +183,37 @@ public class EditorVerifyKeyListener implements VerifyKeyListener {
 		}
 		turnedOn = true;
 		
-		//Add Listeners - Think we only need paint!
+		//Add Listeners - 
         boxPaint = new BoxPaintListener();
-        boxText.addPaintListener(boxPaint);
-        CaretListener caretListener = new CaretPositionListener();
-        boxText.addCaretListener(caretListener);
+        styledText.addPaintListener(boxPaint);
+        caretListener = new CaretPositionListener();
+        styledText.addCaretListener(caretListener);
+        verifyKeyListener = new EditorOverlayVerifyKeyListener();
+		styledText.addVerifyKeyListener(verifyKeyListener);
+		
+		// TODO removed the hack to force redraw.  Will this work?
+		drawBoxes();
 	}
+
 	
-	//stop listening when turned off
+	// stop listening when turned off
 	private void undecorate() {
-		turnedOn = false;
-		//Stop listeners
-		boxText.removePaintListener(boxPaint);
+		if (turnedOn == true) {
+			turnedOn = false;
+			// Stop listeners
+			styledText.removePaintListener(boxPaint);
+			styledText.removeCaretListener(caretListener);
+			styledText.removeVerifyKeyListener(verifyKeyListener);
+			clearBackground();
+		}
 	}
+
+	
 	
 	private class BoxPaintListener implements PaintListener {
 		@Override
 		public void paintControl(PaintEvent e) {
-			drawBox();
+			drawBoxes();
 		}
 	}
 	
@@ -214,14 +225,44 @@ public class EditorVerifyKeyListener implements VerifyKeyListener {
 		}
 	}
 	
+
 	
-	//Find all markers on res, store them as pairs in boxes in boxList
-	private void createBoxListFromMarkers() {
-		ISourceViewer viewer = ((CompilationUnitEditor) editor).getViewer();
+	private class EditorOverlayVerifyKeyListener implements VerifyKeyListener {
+
+		// Intercept key presses, if turned on stop key presses
+		// Bug: Does NOT prevent pasting!
+		@Override
+		public void verifyKey(VerifyEvent event) {
+			System.out.println("verifyKey called: " + event.character);
+			if (turnedOn) {
+				boolean allowed = false;
+				int offset = caretOffset;
+				for (MultilineBox b : multilineBoxes) {
+					// TODO off by one error with ending offset -- you can edit
+					// at the start of the line below the MLBox
+					// TODO does this work with folding?
+					if ((offset >= b.getStartStyledTextOffset())
+							&& (offset <= b.getStopStyledTextOffset())) {
+						allowed = true;
+						break;
+					}
+				}
+				event.doit = allowed;
+			}
+		}
+
+	}
+	
+	
+	
+	
+	
+	//Make multilineBoxes and inlineBpoxes based on annotations in editor viewer
+	private void createBoxes() {
+		ISourceViewer viewer = ((CompilationUnitEditor)editor).getViewer();
 		IAnnotationModel annotationModel = viewer.getAnnotationModel();
 		
-		//viewer.getVerticalRuler();  //i want a ruler  :(
-		
+		// MULTILINE
 		List<Annotation[]> multiline = Util.getMultilineAnnotations(annotationModel);
 		MultilineBox b;
 		
@@ -232,77 +273,107 @@ public class EditorVerifyKeyListener implements VerifyKeyListener {
 		
 		for (int i = 0; i < multiline.size(); i++) {
 			b = new MultilineBox(annotationModel, multiline.get(i)[0], multiline.get(i)[1]);
-			boxList.add(b);
-			
-			System.out.println("No Crash");
-			System.out.println(b);
+			multilineBoxes.add(b);
+			//System.out.println("No Crash");
+			//System.out.println(b);
 		}
-		System.out.println("Done with for loop");
 		
-		List<IMarker> inline = Util.getInlineMarkers(res);
+		
+		// INLINE
+		//List<IMarker> inline = Util.getInlineMarkers(res);
 		//TODO: Storage and drawing for inline markers
 	}
 	
 	
 	
 	
-	//ATTEMPT #1 AT BOX DRAWING
-	//Most of this is stolen from editbox
 	
-	private LinkedList<Integer> oldDrawParameters;  //Stores some set of numbers related to things we're drawing, not for use outside Draw!
+	
+	
+	////////////////
+	
+	
+	//private LinkedList<Integer> oldDrawParameters;  //Stores some set of numbers related to things we're drawing, not for use outside Draw!
+	
+	private int oldEditorWidth = 0;
 	
 	//draws boxes from boxList
-	public void drawBox() {
+	public  void drawBoxes() {
 		//big picture: create an image (newImage), edit with the gc, then set as styledtext background later
-		Rectangle r0 = boxText.getClientArea();
-		Image newImage = new Image(null, r0.width, r0.height);
-        GC gc = new GC(newImage);
-        
-        
-        ISourceViewer v = ((CompilationUnitEditor) editor).getViewer();
-		ITextViewerExtension5 itve5 = (ITextViewerExtension5)v;   //we can use this to get line numbers w/ folding
+		Rectangle editorRectangle = styledText.getClientArea();
 		
-        
+        //LinkedList params = new LinkedList<Integer>();   DELETE ME
+		
         //Do we need to redraw?
-		//Idea: Throw a bunch of numbers in some list, and see if it changes from one to another
-        LinkedList<Integer> params = new LinkedList<Integer>();
-        params.add(r0.width);
-        for (MultilineBox b : boxList) {
+		boolean redraw = false;
+		
+		// if the editor window gets wider or narrower we've got to redraw it no matter what
+		if (editorRectangle.width != oldEditorWidth) {
+			redraw = true;
+			oldEditorWidth = editorRectangle.width;
+		}
+
+		// collect all the drawing locations for all the boxes.
+        for (MultilineBox b : multilineBoxes) {
         	//params.add(boxText.getLocationAtOffset(boxText.getOffsetAtLine(b.start()-1)).y);
         	//params.add(boxText.getLinePixel(b.start()-1));
         	
         	//params.add(boxText.getLocationAtOffset(b.startOffset()).y);
         	//params.add(boxText.getLocationAtOffset(b.stopOffset()).y);
-        	try {
-        		int startWidgetOffset = itve5.modelOffset2WidgetOffset(b.startOffset());
-        		params.add(boxText.getLocationAtOffset(startWidgetOffset).y);
-        		int stopWidgetOffset = itve5.modelOffset2WidgetOffset(b.stopOffset());
-        		params.add(boxText.getLocationAtOffset(stopWidgetOffset).y);
-        	} catch (Exception e) {
-        		params.add(-1);  //one of the endpoints is folded
+        	
+        	int startWidgetOffset, stopWidgetOffset;
+        	int startPixelY = -1, stopPixelY = -1;
+        	
+        	startWidgetOffset = srcViewerE5.modelOffset2WidgetOffset(b.getStartStyledTextOffset());
+        	if (startWidgetOffset != -1) {
+        		startPixelY = styledText.getLocationAtOffset(startWidgetOffset).y;
         	}
+        	stopWidgetOffset = srcViewerE5.modelOffset2WidgetOffset(b.getStopStyledTextOffset());
+        	if (stopWidgetOffset != -1) {
+        		stopPixelY = styledText.getLocationAtOffset(stopWidgetOffset).y;
+        	}
+
+        	// no need to check/store widget offsets... right?
+        	if (b.getStartPixelY() != startPixelY) {
+        		redraw = true;
+        		b.setStartPixelY(startPixelY);
+        	}	
+        	if (b.getStopPixelY() != stopPixelY) {
+        		redraw = true;
+        		b.setStopPixelY(stopPixelY);
+        	}
+        	
         }
-        if (params.equals(oldDrawParameters)) {
+        
+        // TODO compare old drawing locations with new locations.  If unchanged, simply return.
+        if (!redraw) {
         	return;  //short circuit if we don't need to redraw
         }
-        oldDrawParameters = params;  //save state of last draw
+
         
+        //// OKAY, we need to draw
+		
+		// TODO speed keep old size around and only recreate when necessary?
+		Image newImage = new Image(null, editorRectangle.width, editorRectangle.height);
+        GC gc = new GC(newImage);
         
-        System.out.println(Arrays.toString(itve5.getCoveredModelRanges(itve5.getModelCoverage())));
-        IRegion[] visibleRegions = itve5.getCoveredModelRanges(itve5.getModelCoverage());
+////////////////////////////////////////////////////
+        
+        System.out.println(Arrays.toString(srcViewerE5.getCoveredModelRanges(srcViewerE5.getModelCoverage())));
+        IRegion[] visibleRegions = srcViewerE5.getCoveredModelRanges(srcViewerE5.getModelCoverage());
         
         if (turnedOn) {
     		gc.setLineWidth(2);
         	
-        	for (MultilineBox b : boxList) {
+        	for (MultilineBox b : multilineBoxes) {
         		//int startY = boxText.getLinePixel(b.start()-1);  //for dealing with line numbers, not offsets
         		//int stopY = boxText.getLinePixel(b.stop());
         		
         		//int startY = boxText.getLocationAtOffset(b.startOffset()).y;  //start is offset, not line number
         		//int stopY = boxText.getLocationAtOffset(b.stopOffset()).y; // + boxText.getLineHeight();
 
-    			int startWidgetOffset = itve5.modelOffset2WidgetOffset(b.startOffset());
-    			int stopWidgetOffset = itve5.modelOffset2WidgetOffset(b.stopOffset());
+    			int startWidgetOffset = srcViewerE5.modelOffset2WidgetOffset(b.getStartStyledTextOffset());
+    			int stopWidgetOffset = srcViewerE5.modelOffset2WidgetOffset(b.getStopStyledTextOffset());
 
     			System.out.println("start: " + startWidgetOffset + ", stop: " + stopWidgetOffset);
     			
@@ -310,43 +381,55 @@ public class EditorVerifyKeyListener implements VerifyKeyListener {
     			
     			if (startWidgetOffset == -1) {   //start marker is folded, recompute
     				System.out.println("new start");
-    				startWidgetOffset = b.startOffset();
+    				startWidgetOffset = b.getStartStyledTextOffset();
     				while ((index < visibleRegions.length) && (startWidgetOffset >= visibleRegions[index].getOffset())) {
     					index++;
     				}
     				
     				startWidgetOffset = visibleRegions[index].getOffset();
-    				if (b.stopOffset() < startWidgetOffset) {	//no region to draw, stop found before start
+    				if (b.getStopStyledTextOffset() < startWidgetOffset) {	//no region to draw, stop found before start
     					System.out.println("full box folded");
     					continue;
     				}
-    				startWidgetOffset = itve5.modelOffset2WidgetOffset(startWidgetOffset);
+    				startWidgetOffset = srcViewerE5.modelOffset2WidgetOffset(startWidgetOffset);
     			}
     			
     			if (stopWidgetOffset == -1) {  //stop marker is folded, recompute
     				System.out.println("new end");
-    				stopWidgetOffset = b.stopOffset();
+    				stopWidgetOffset = b.getStopStyledTextOffset();
     				while ((index < visibleRegions.length) && (stopWidgetOffset < visibleRegions[index].getOffset() - visibleRegions[index].getLength())) {
     					index++;
     				}
     				index++;
     				stopWidgetOffset = visibleRegions[index].getOffset();
-    				stopWidgetOffset = itve5.modelOffset2WidgetOffset(stopWidgetOffset);
+    				stopWidgetOffset = srcViewerE5.modelOffset2WidgetOffset(stopWidgetOffset);
     			}
 
-    			int startY = boxText.getLocationAtOffset(startWidgetOffset).y;
-    			int stopY = boxText.getLocationAtOffset(stopWidgetOffset).y;
+    			int startY = styledText.getLocationAtOffset(startWidgetOffset).y;
+    			int stopY = styledText.getLocationAtOffset(stopWidgetOffset).y;
     			
     			gc.setForeground(b.color);
-        		gc.drawRectangle(1, startY, r0.width - 4, stopY - startY);
+        		gc.drawRectangle(1, startY, editorRectangle.width - 4, stopY - startY);
         	}
         }
         
-        Image oldImage = boxText.getBackgroundImage();  //(so we can null check)
-        boxText.setBackgroundImage(newImage);	//draw our box!  :D
+        Image oldImage = styledText.getBackgroundImage();  //(so we can null check)
+        styledText.setBackgroundImage(newImage);	//draw our box!  :D
         if (oldImage != null)
                 oldImage.dispose();   //if we had a box before, clean up after ourselves
         gc.dispose();
 	}
 
+	
+	
+	private void clearBackground() {
+		Image oldImage = styledText.getBackgroundImage();
+        styledText.setBackgroundImage(null);
+        if (oldImage != null)
+            oldImage.dispose();
+	}
+	
 }
+
+	
+

@@ -11,7 +11,7 @@ import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.handlers.HandlerUtil;
 
-import edu.berkeley.eduride.editoroverlay.EditorVerifyKeyListener;
+import edu.berkeley.eduride.editoroverlay.BoxConstrainedEditorOverlay;
 
 public class InstallKeyVerifyListener implements IHandler2 {
 
@@ -38,7 +38,12 @@ public class InstallKeyVerifyListener implements IHandler2 {
 			if (page == null)
 				return null;
 			IEditorPart editor = page.getActiveEditor();
-			EditorVerifyKeyListener.ensureInstalled(editor);
+			if (BoxConstrainedEditorOverlay.shouldInstall(editor)) {
+				BoxConstrainedEditorOverlay evkl = BoxConstrainedEditorOverlay.ensureInstalled(editor);
+				//evkl won't be null becuase we already check shouldInstall
+				evkl.toggle();
+				
+			}
 			return null;
 	}
 
