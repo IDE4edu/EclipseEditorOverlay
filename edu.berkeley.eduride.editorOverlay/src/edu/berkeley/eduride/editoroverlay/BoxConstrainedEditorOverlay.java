@@ -51,8 +51,6 @@ public class BoxConstrainedEditorOverlay  {
     ISourceViewer srcViewer;
     ITextViewerExtension5 srcViewerE5;
 		
-
-	
 	
 	private ArrayList<MultilineBox> multilineBoxes = new ArrayList<MultilineBox>();
 	
@@ -227,19 +225,22 @@ public class BoxConstrainedEditorOverlay  {
 	private class EditorOverlayVerifyKeyListener implements VerifyKeyListener {
 
 		// Intercept key presses, if turned on stop key presses
-		// Bug: Does NOT prevent pasting!
+		
+		//TODO Kim's consolidated To Do List:
+		//1. detect/catch/stop paste events outside of boxes
+		//2. At start of the box, can press Delete key to erase outside of box!
+		//3. Arrow keys don't work, should ignore arrow key presses
+		
 		@Override
 		public void verifyKey(VerifyEvent event) {
 			System.out.println("verifyKey called: " + event.character);
 			if (turnedOn) {
 				boolean allowed = false;
 				int offset = caretOffset;
+				offset = srcViewerE5.widgetOffset2ModelOffset(offset);  //account for folding
+				
 				for (MultilineBox b : multilineBoxes) {
-					// TODO off by one error with ending offset -- you can edit
-					// at the start of the line below the MLBox
-					// TODO does this work with folding?
-					if ((offset >= b.getStartStyledTextOffset())
-							&& (offset <= b.getStopStyledTextOffset())) {
+					if ((offset >= b.getStartStyledTextOffset()) && (offset <= b.getStopStyledTextOffset() - 1)) {
 						allowed = true;
 						break;
 					}
