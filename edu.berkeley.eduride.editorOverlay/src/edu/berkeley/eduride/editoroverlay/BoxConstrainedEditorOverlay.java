@@ -1,18 +1,15 @@
 package edu.berkeley.eduride.editoroverlay;
 
 import org.eclipse.core.resources.IFile;
-import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.jdt.internal.ui.javaeditor.CompilationUnitEditor;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.IRegion;
 import org.eclipse.jface.text.ITextSelection;
 import org.eclipse.jface.text.ITextViewerExtension5;
-import org.eclipse.jface.text.TextViewer;
 import org.eclipse.jface.text.source.Annotation;
 import org.eclipse.jface.text.source.IAnnotationModel;
 import org.eclipse.jface.text.source.ISourceViewer;
-import org.eclipse.jface.text.source.SourceViewer;
 import org.eclipse.jface.viewers.ISelectionChangedListener;
 import org.eclipse.jface.viewers.ISelectionProvider;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
@@ -302,12 +299,11 @@ public class BoxConstrainedEditorOverlay  {
 		//big picture: create an image (newImage), edit with the gc, then set as styledtext background later
 		Rectangle editorRectangle = styledText.getClientArea();
 		
-        //LinkedList params = new LinkedList<Integer>();   DELETE ME
-		
         //Do we need to redraw?
 		boolean redraw = false;
+		boolean somethingIsFolded = false;
 		
-		// if the editor window gets wider or narrower we've got to redraw it no matter what
+		// if the editor window gets wider or narrower we've got to redraw it no matter what...  don't out here!
 		if (editorRectangle.width != oldEditorWidth) {
 			redraw = true;
 			oldEditorWidth = editorRectangle.width;
@@ -327,10 +323,15 @@ public class BoxConstrainedEditorOverlay  {
         	startWidgetOffset = srcViewerE5.modelOffset2WidgetOffset(b.getStartStyledTextOffset());
         	if (startWidgetOffset != -1) {
         		startPixelY = styledText.getLocationAtOffset(startWidgetOffset).y;
+        	} else {
+        		somethingIsFolded = true;
         	}
+        	
         	stopWidgetOffset = srcViewerE5.modelOffset2WidgetOffset(b.getStopStyledTextOffset());
         	if (stopWidgetOffset != -1) {
         		stopPixelY = styledText.getLocationAtOffset(stopWidgetOffset).y;
+        	} else {
+        		somethingIsFolded = true;
         	}
 
         	// no need to check/store widget offsets... right?
@@ -345,11 +346,13 @@ public class BoxConstrainedEditorOverlay  {
         	
         }
         
-        // TODO compare old drawing locations with new locations.  If unchanged, simply return.
+        //compare old drawing locations with new locations.  If unchanged, simply return.
         if (!redraw) {
         	return;  //short circuit if we don't need to redraw
         }
 
+        
+        
         
         //// OKAY, we need to draw
 		
@@ -357,59 +360,59 @@ public class BoxConstrainedEditorOverlay  {
 		Image newImage = new Image(null, editorRectangle.width, editorRectangle.height);
         GC gc = new GC(newImage);
         
-////////////////////////////////////////////////////
-        
-        System.out.println(Arrays.toString(srcViewerE5.getCoveredModelRanges(srcViewerE5.getModelCoverage())));
         IRegion[] visibleRegions = srcViewerE5.getCoveredModelRanges(srcViewerE5.getModelCoverage());
         
         if (turnedOn) {
-    		gc.setLineWidth(2);
+        	gc.setLineWidth(2);
         	
-        	for (MultilineBox b : multilineBoxes) {
-        		//int startY = boxText.getLinePixel(b.start()-1);  //for dealing with line numbers, not offsets
-        		//int stopY = boxText.getLinePixel(b.stop());
+        	if (!somethingIsFolded) {   //Don't go through big slow ifs/loops when no folding problems (aka correct use of boxes)
+        		for (MultilineBox b : multilineBoxes) {
+        			int startY = b.getStartPixelY();
+        			int stopY = b.getStopPixelY();
         		
-        		//int startY = boxText.getLocationAtOffset(b.startOffset()).y;  //start is offset, not line number
-        		//int stopY = boxText.getLocationAtOffset(b.stopOffset()).y; // + boxText.getLineHeight();
-
-    			int startWidgetOffset = srcViewerE5.modelOffset2WidgetOffset(b.getStartStyledTextOffset());
-    			int stopWidgetOffset = srcViewerE5.modelOffset2WidgetOffset(b.getStopStyledTextOffset());
-
-    			System.out.println("start: " + startWidgetOffset + ", stop: " + stopWidgetOffset);
-    			
-    			int index = 0;
-    			
-    			if (startWidgetOffset == -1) {   //start marker is folded, recompute
-    				System.out.println("new start");
-    				startWidgetOffset = b.getStartStyledTextOffset();
-    				while ((index < visibleRegions.length) && (startWidgetOffset >= visibleRegions[index].getOffset())) {
-    					index++;
-    				}
-    				
-    				startWidgetOffset = visibleRegions[index].getOffset();
-    				if (b.getStopStyledTextOffset() < startWidgetOffset) {	//no region to draw, stop found before start
-    					System.out.println("full box folded");
-    					continue;
-    				}
-    				startWidgetOffset = srcViewerE5.modelOffset2WidgetOffset(startWidgetOffset);
-    			}
-    			
-    			if (stopWidgetOffset == -1) {  //stop marker is folded, recompute
-    				System.out.println("new end");
-    				stopWidgetOffset = b.getStopStyledTextOffset();
-    				while ((index < visibleRegions.length) && (stopWidgetOffset < visibleRegions[index].getOffset() - visibleRegions[index].getLength())) {
-    					index++;
-    				}
-    				index++;
-    				stopWidgetOffset = visibleRegions[index].getOffset();
-    				stopWidgetOffset = srcViewerE5.modelOffset2WidgetOffset(stopWidgetOffset);
-    			}
-
-    			int startY = styledText.getLocationAtOffset(startWidgetOffset).y;
-    			int stopY = styledText.getLocationAtOffset(stopWidgetOffset).y;
-    			
-    			gc.setForeground(b.color);
-        		gc.drawRectangle(1, startY, editorRectangle.width - 4, stopY - startY);
+        			gc.setForeground(b.color);
+            		gc.drawRectangle(1, startY, editorRectangle.width - 4, stopY - startY);
+        		}
+        		
+        		
+        		
+        	} else {  //something is folded, so we need to check starts/ends and recalculate
+	        	for (MultilineBox b : multilineBoxes) {
+	        		int startY = b.getStartPixelY();
+	        		int stopY = b.getStopPixelY();
+	        		
+	        		int index = 0;
+	    			
+	    			if (startY == -1) {   //start marker is folded, recompute
+	    				startY = b.getStartStyledTextOffset();
+	    				while ((index < visibleRegions.length) && (startY >= visibleRegions[index].getOffset())) {
+	    					index++;
+	    				}
+	    				
+	    				startY = visibleRegions[index].getOffset();
+	    				
+	    				if (b.getStopStyledTextOffset() < startY) {	//no region to draw, stop found before start
+	    					continue;
+	    				}
+	    				startY = srcViewerE5.modelOffset2WidgetOffset(startY);
+	    				startY = styledText.getLocationAtOffset(startY).y;
+	    			}
+	    			
+	    			if (stopY == -1) {  //stop marker is folded, recompute
+	    				stopY = b.getStopStyledTextOffset();
+	    				
+	    				while ((index < visibleRegions.length) && (stopY > visibleRegions[index].getOffset() )) {
+	    					index++;
+	    				}
+	    				
+	    				stopY = visibleRegions[index].getOffset() + visibleRegions[index].getLength() - 1;
+	    				stopY = srcViewerE5.modelOffset2WidgetOffset(stopY);
+	    				stopY = styledText.getLocationAtOffset(stopY).y;
+	    			}
+	        		
+	    			gc.setForeground(b.color);
+	        		gc.drawRectangle(1, startY, editorRectangle.width - 4, stopY - startY);
+        		}
         	}
         }
         
