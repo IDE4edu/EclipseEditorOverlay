@@ -186,7 +186,6 @@ public class BoxConstrainedEditorOverlay  {
         verifyKeyListener = new EditorOverlayVerifyKeyListener();
 		styledText.addVerifyKeyListener(verifyKeyListener);
 		
-		// TODO removed the hack to force redraw.  Will this work?
 		drawBoxes();
 	}
 
@@ -227,21 +226,38 @@ public class BoxConstrainedEditorOverlay  {
 		// Intercept key presses, if turned on stop key presses
 		
 		//TODO Kim's consolidated To Do List:
-		//1. detect/catch/stop paste events outside of boxes
-		//2. At start of the box, can press Delete key to erase outside of box!
-		//3. Arrow keys don't work, should ignore arrow key presses
+		//1. BAD CRASH: Highlight a region s.t. it covers a marker and the cursor is in a box, press delete or any key.
+		//    Annotation gets deleted, code explodes from null pointer.  Does get caught by keypress event, how do we handle it?
+		//2. detect/catch/stop paste events outside of boxes
 		
 		@Override
 		public void verifyKey(VerifyEvent event) {
-			System.out.println("verifyKey called: " + event.character);
+			char character = event.character;
+			System.out.println("verifyKey called: " + character + ", int: " + ((int)character));
+			if ((int)character == 0) {  //hacky, allow non-character keys like arrows.  Couldn't find a proper method to detect arrows.
+				event.doit = true;
+				return;
+			}
 			if (turnedOn) {
 				boolean allowed = false;
+				
 				int offset = caretOffset;
 				offset = srcViewerE5.widgetOffset2ModelOffset(offset);  //account for folding
 				
 				for (MultilineBox b : multilineBoxes) {
-					if ((offset >= b.getStartStyledTextOffset()) && (offset <= b.getStopStyledTextOffset() - 1)) {
+					if ((offset > b.getStartStyledTextOffset()) && (offset < b.getStopStyledTextOffset() - 1)) {
 						allowed = true;
+						if ((int)character == 8) {	//backspace
+							if (offset == b.getStartStyledTextOffset() + 1) {	//are we at the start of a box?
+								allowed = false;
+							}
+						} if ((int)character == 127) {  //user pressed delete
+							System.out.println("Delete pressed");
+							if (offset == b.getStopStyledTextOffset() - 2) {  //end of box
+								System.out.println("end of box");
+								allowed = false;
+							}
+						}
 						break;
 					}
 				}

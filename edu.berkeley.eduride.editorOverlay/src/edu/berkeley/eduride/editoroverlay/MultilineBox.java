@@ -10,7 +10,7 @@ public class MultilineBox {
 	private IAnnotationModel model;
 	private Annotation start;
 	private Annotation stop;
-	Color color = new Color(null, 200, 120, 255);
+	Color color = purple();
 	
 	public MultilineBox (IAnnotationModel m, Annotation Start, Annotation Stop) {
 		model = m;
@@ -21,6 +21,12 @@ public class MultilineBox {
 	public MultilineBox (IAnnotationModel m, Annotation Start, Annotation Stop, Color  boxColor) {
 		this(m, Start, Stop);
 		color = boxColor;
+	}
+	
+	//can do static purple or semi-random purples
+	private Color purple() {
+		return new Color(null, 200, 120, 255);
+		//return new Color(null, 170 + (int)(60 * Math.random()), 90 + (int)(60 * Math.random()), 205 + (int)(40 * Math.random()));
 	}
 
 	//getter for start..  returns the offset (relative to start of file)
