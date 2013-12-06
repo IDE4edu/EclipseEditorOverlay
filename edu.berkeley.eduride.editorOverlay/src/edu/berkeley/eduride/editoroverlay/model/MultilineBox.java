@@ -1,21 +1,21 @@
-package edu.berkeley.eduride.editoroverlay;
+package edu.berkeley.eduride.editoroverlay.model;
 
+import org.eclipse.jface.text.Position;
 import org.eclipse.jface.text.source.Annotation;
 import org.eclipse.jface.text.source.IAnnotationModel;
 import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.graphics.Color;
 
-public class MultilineBox {
+public class MultilineBox extends Box {
 	//start and stop are the line numbers corresponding to where user can type
-	private IAnnotationModel model;
-	private Annotation start;
-	private Annotation stop;
-	Color color = purple();
+
 	
-	public MultilineBox (IAnnotationModel m, Annotation Start, Annotation Stop) {
-		model = m;
-		start = Start;
-		stop = Stop;
+	private Annotation stop;
+
+	
+	public MultilineBox (IAnnotationModel m, Annotation start, Annotation stop) {
+		super (m, start);
+		this.stop = stop;
 	}
 	
 	public MultilineBox (IAnnotationModel m, Annotation Start, Annotation Stop, Color  boxColor) {
@@ -23,25 +23,28 @@ public class MultilineBox {
 		color = boxColor;
 	}
 	
-	//can do static purple or semi-random purples
-	private Color purple() {
-		return new Color(null, 200, 120, 255);
-		//return new Color(null, 170 + (int)(60 * Math.random()), 90 + (int)(60 * Math.random()), 205 + (int)(40 * Math.random()));
-	}
-
-	//getter for start..  returns the offset (relative to start of file)
-	int getStartStyledTextOffset() {
-		return (model.getPosition(start).getOffset());
-	}
 	
-	//getter for stop..  returns the offset (relative to start of file)
-	int getStopStyledTextOffset() {
+	
+	// styled text position -- need to override Stop position 
+
+
+	
+	@Override
+	public int getStopStyledTextOffset() {
 		return (model.getPosition(stop).getOffset());
 	}
 	
+	// assume this is the position of the stop annotation... I guess...
+	@Override
+	public int getStopStyledTextOffset(Position stopPos) {
+		return stopPos.getOffset();
+	}
+	
+	
+	////// storage for use during drawBox()
 	
 	private int startWidgetOffset = -1;
-	int getStartWidgetOffset() {
+	public int getStartWidgetOffset() {
 		return startWidgetOffset;
 	}
 	void setStartWidgetOffset(int off) {
@@ -50,28 +53,28 @@ public class MultilineBox {
 	
 	
 	private int stopWidgetOffset = -1;
-	int getStopWidgetOffset() {
+	public int getStopWidgetOffset() {
 		return stopWidgetOffset;
 	}
-	void setStopWidgetOffset(int off) {
+	public void setStopWidgetOffset(int off) {
 		stopWidgetOffset=off;
 	}
 	
 	
 	private int startPixelY = -1;
-	int getStartPixelY() {
+	public int getStartPixelY() {
 		return startPixelY;
 	}
-	void setStartPixelY(int y) {
+	public void setStartPixelY(int y) {
 		startPixelY=y;
 	}
 	
 	
 	private int stopPixelY = -1;
-	int getStopPixelY() {
+	public int getStopPixelY() {
 		return stopPixelY;
 	}
-	void setStopPixelY(int y) {
+	public void setStopPixelY(int y) {
 		stopPixelY=y;
 	}
 	

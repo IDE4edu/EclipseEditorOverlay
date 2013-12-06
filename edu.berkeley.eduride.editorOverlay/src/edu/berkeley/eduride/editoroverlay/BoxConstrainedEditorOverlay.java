@@ -16,6 +16,7 @@ import org.eclipse.jface.text.source.ISourceViewer;
 import org.eclipse.jface.viewers.ISelectionChangedListener;
 import org.eclipse.jface.viewers.ISelectionProvider;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
+import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CaretEvent;
 import org.eclipse.swt.custom.CaretListener;
 import org.eclipse.swt.custom.StyledText;
@@ -38,6 +39,9 @@ import org.eclipse.ui.texteditor.ITextEditor;
 import org.eclipse.jface.text.Position;
 
 import edu.berkeley.eduride.editoroverlay.marker.Util;
+import edu.berkeley.eduride.editoroverlay.model.Box;
+import edu.berkeley.eduride.editoroverlay.model.InlineBox;
+import edu.berkeley.eduride.editoroverlay.model.MultilineBox;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -243,45 +247,105 @@ public class BoxConstrainedEditorOverlay  {
 		
 		@Override
 		public void verifyKey(VerifyEvent event) {
+			//System.out.println("verifyKey called: " + event.character + ", int: " + keyCode);
+			
+			if (!turnedOn) {
+				// allow it, begrudgingly. 
+				return;
+			}
+			
+			
+			int keyCode = event.keyCode;
 			char character = event.character;
-			System.out.println("verifyKey called: " + character + ", int: " + ((int)character));
-			if ((int)character == 0) {  //hacky, allow non-character keys like arrows.  Couldn't find a proper method to detect arrows.
+			
+			// allow arrows and other non-input keys?  PAGE+UP, END, etc...
+			// TODO better way to do this??  I think this gets all those keys...
+			if (keyCode >= SWT.ARROW_UP) {
+					// ((int) character == 0)   seems to work also?
 				event.doit = true;
 				return;
 			}
-			if (turnedOn) {
-				boolean allowed = false;
-				
-				int offset = caretOffset;
-				offset = txtViewerExt.widgetOffset2ModelOffset(offset);  //account for folding
-				
-				for (MultilineBox b : multilineBoxes) {
-					
-					// TODO move this to a helper function...
-					if ((offset > b.getStartStyledTextOffset()) && (offset < b.getStopStyledTextOffset() - 1)) {
-						allowed = true;
-						if ((int)character == 8) {	//backspace
-							if (offset == b.getStartStyledTextOffset() + 1) {	//are we at the start of a box?
-								allowed = false;
-							}
-						} if ((int)character == 127) {  //user pressed delete
-							System.out.println("Delete pressed");
-							if (offset == b.getStopStyledTextOffset() - 2) {  //end of box
-								System.out.println("end of box");
-								allowed = false;
-							}
-						}
-						break;
-					}
+			
+			
+			int widgetOffset = txtViewerExt.widgetOffset2ModelOffset(caretOffset); // account for folding
+
+			for (MultilineBox b : multilineBoxes) {
+				int bStartOffset = b.getStartStyledTextOffset();
+				int bStopOffset = b.getStopStyledTextOffset();
+
+				if (keyEventInBox(widgetOffset, bStartOffset, bStopOffset)) {
+					event.doit = allowKeyEventInBox(widgetOffset, b,
+							bStartOffset, bStopOffset, character);
+					return;
 				}
-				for (InlineBox b : inlineBoxes) {
-					// TODO use that helper function!
-				}
-				event.doit = allowed;
 			}
+			for (InlineBox b : inlineBoxes) {
+				int bStartOffset = b.getStartStyledTextOffset();
+				int bStopOffset = b.getStopStyledTextOffset();
+
+				if (keyEventInBox(widgetOffset, bStartOffset, bStopOffset)) {
+					event.doit = allowKeyEventInBox(widgetOffset, b,
+							bStartOffset, bStopOffset, character);
+					return;
+				}
+			}
+
+			event.doit = false;
+			return;
 		}
+		
+		
+		private boolean keyEventInBox (int offset, int bStartOffset, int bStopOffset) {
+			return ((offset > bStartOffset) && (offset < bStopOffset - 1));
+		}
+		
+		// might need to specialize for box type, so kept Box argument
+		private boolean allowKeyEventInBox(int offset, Box b, int bStartOffset, int bStopOffset, char character) {
+			boolean allowed = true;
+			
+			if (character == SWT.BS) {
+				// backspace key
+				if (offset == (bStartOffset + 1)) {
+					// start of the box, must resist or we'll delete the annotation
+					allowed = false;
+				}
+
+			} else if (character == SWT.DEL) {
+				// delete key
+				if (offset == (bStopOffset - 2)) {
+					// end of the box, you can't delete that!
+					allowed = false;
+				}
+			}
+			return allowed;
+		}
+		
+
+		//for Inline box -- try to allow key presses at right?
+		private boolean allowKeyEventInBox(int offset, InlineBox b, int bStartOffset, int bStopOffset, char character) {
+			boolean allowed = true;
+			
+			if (character == SWT.BS) {
+				// backspace key
+				if (offset == (bStartOffset + 1)) {
+					// start of the box, must resist or we'll delete the annotation
+					allowed = false;
+				}
+
+			} else if (character == SWT.DEL) {
+				// delete key
+				if (offset == (bStopOffset - 1)) {
+					// end of the box, you can't delete that!
+					allowed = false;
+				}
+			}
+			return allowed;
+		}
+		
 
 	}
+	
+	
 	
 	
 	
@@ -373,7 +437,7 @@ public class BoxConstrainedEditorOverlay  {
 		//big picture: create an image (newImage), edit with the gc, then set as styledtext background later
 		Rectangle editorRectangle = styledText.getClientArea();
 		
-        //Do we need to redraw?
+        //Do we need to redraw?  if any box has changed anywhere, we do it all again
 		boolean redraw = false;
 		boolean somethingIsFolded = false;
 		
@@ -462,9 +526,7 @@ public class BoxConstrainedEditorOverlay  {
         	return;  //short circuit if we don't need to redraw
         }
 
-        
-        
-        
+               
         //// OKAY, we need to draw
 		
 		// TODO speed keep old size around and only recreate when necessary?
@@ -475,13 +537,14 @@ public class BoxConstrainedEditorOverlay  {
         
         if (turnedOn) {
         	gc.setLineWidth(2);
-
+        	// assuming all lines have the same height, yo.
+        	int lineHeight = styledText.getLineHeight();
         	
         	for (InlineBox b : inlineBoxes) {
         		if (b.x != -1) {
         			// its visible (not folded up)
         			gc.setForeground(b.color);
-        			gc.drawRectangle(b.x, b.y, b.width, styledText.getLineHeight());
+        			gc.drawRectangle(b.x, b.y, b.width, lineHeight);
         		}
         		
         	}
@@ -536,9 +599,9 @@ public class BoxConstrainedEditorOverlay  {
         }
         
         Image oldImage = styledText.getBackgroundImage();  //(so we can null check)
-        styledText.setBackgroundImage(newImage);	//draw our box!  :D
+        styledText.setBackgroundImage(newImage);	//draw our boxes!  :D
         if (oldImage != null)
-                oldImage.dispose();   //if we had a box before, clean up after ourselves
+                oldImage.dispose();   //if we had boxes before, clean up after ourselves
         gc.dispose();
 	}
 
