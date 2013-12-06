@@ -8,7 +8,10 @@ import org.eclipse.jface.text.IRegion;
 import org.eclipse.jface.text.ITextSelection;
 import org.eclipse.jface.text.ITextViewerExtension5;
 import org.eclipse.jface.text.source.Annotation;
+import org.eclipse.jface.text.source.AnnotationModelEvent;
 import org.eclipse.jface.text.source.IAnnotationModel;
+import org.eclipse.jface.text.source.IAnnotationModelListener;
+import org.eclipse.jface.text.source.IAnnotationModelListenerExtension;
 import org.eclipse.jface.text.source.ISourceViewer;
 import org.eclipse.jface.viewers.ISelectionChangedListener;
 import org.eclipse.jface.viewers.ISelectionProvider;
@@ -22,6 +25,7 @@ import org.eclipse.swt.events.PaintListener;
 import org.eclipse.swt.events.VerifyEvent;
 import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.ui.IEditorInput;
@@ -31,6 +35,7 @@ import org.eclipse.ui.part.FileEditorInput;
 import org.eclipse.ui.texteditor.AbstractDecoratedTextEditor;
 import org.eclipse.ui.texteditor.IDocumentProvider;
 import org.eclipse.ui.texteditor.ITextEditor;
+import org.eclipse.jface.text.Position;
 
 import edu.berkeley.eduride.editoroverlay.marker.Util;
 
@@ -49,10 +54,12 @@ public class BoxConstrainedEditorOverlay  {
 	private ITextSelection sel;
 	private static HashMap<IEditorPart, BoxConstrainedEditorOverlay> installedOn = new HashMap<IEditorPart, BoxConstrainedEditorOverlay>();
     ISourceViewer srcViewer;
-    ITextViewerExtension5 srcViewerE5;
+    IAnnotationModel annotationModel;
+    ITextViewerExtension5 txtViewerExt;
 		
 	
 	private ArrayList<MultilineBox> multilineBoxes = new ArrayList<MultilineBox>();
+	private ArrayList<InlineBox> inlineBoxes = new ArrayList<InlineBox>();
 	
 	private boolean turnedOn = false;	//need to toggle this on setup
 	
@@ -60,6 +67,7 @@ public class BoxConstrainedEditorOverlay  {
 	private BoxPaintListener boxPaint;
 	private CaretListener caretListener;
 	private EditorOverlayVerifyKeyListener verifyKeyListener;
+	private BCEOAnnotationModelListener annotationModelListener;
 	IResource res;
 	int caretOffset = 0;
 	
@@ -81,7 +89,7 @@ public class BoxConstrainedEditorOverlay  {
 				ekpl.res = ResourceUtil.getResource(editor.getEditorInput());
 				if (ekpl.res != null) {	
 					System.out.println("making inline");
-					Util.createInlineMarker(ekpl.res, 10, 5, 25, "yeah");
+					Util.createInlineMarker(ekpl.res, ekpl.styledText.getOffsetAtLine(8)+5, ekpl.styledText.getOffsetAtLine(8)+25, "yeah");
 					System.out.println("making multiline");
 					Util.createMultiLine(ekpl.res, 12, 20, "yeah2");
 					Util.createMultiLine(ekpl.res, 22, 25, "box3");
@@ -126,7 +134,8 @@ public class BoxConstrainedEditorOverlay  {
 			sp.addSelectionChangedListener(new selChanged(this));
 			
 		    srcViewer = ((CompilationUnitEditor) editor).getViewer();
-			srcViewerE5 = (ITextViewerExtension5)srcViewer;   //we can use this to get line numbers w/ folding
+		    annotationModel = srcViewer.getAnnotationModel();
+			txtViewerExt = (ITextViewerExtension5)srcViewer;   //we can use this to get line numbers w/ folding
 				
 		 
 		} else {
@@ -185,6 +194,8 @@ public class BoxConstrainedEditorOverlay  {
         styledText.addCaretListener(caretListener);
         verifyKeyListener = new EditorOverlayVerifyKeyListener();
 		styledText.addVerifyKeyListener(verifyKeyListener);
+		annotationModelListener = new BCEOAnnotationModelListener();
+		annotationModel.addAnnotationModelListener(annotationModelListener);
 		
 		drawBoxes();
 	}
@@ -242,9 +253,11 @@ public class BoxConstrainedEditorOverlay  {
 				boolean allowed = false;
 				
 				int offset = caretOffset;
-				offset = srcViewerE5.widgetOffset2ModelOffset(offset);  //account for folding
+				offset = txtViewerExt.widgetOffset2ModelOffset(offset);  //account for folding
 				
 				for (MultilineBox b : multilineBoxes) {
+					
+					// TODO move this to a helper function...
 					if ((offset > b.getStartStyledTextOffset()) && (offset < b.getStopStyledTextOffset() - 1)) {
 						allowed = true;
 						if ((int)character == 8) {	//backspace
@@ -261,6 +274,9 @@ public class BoxConstrainedEditorOverlay  {
 						break;
 					}
 				}
+				for (InlineBox b : inlineBoxes) {
+					// TODO use that helper function!
+				}
 				event.doit = allowed;
 			}
 		}
@@ -271,31 +287,72 @@ public class BoxConstrainedEditorOverlay  {
 	
 	
 	
+	
+	public class BCEOAnnotationModelListener implements IAnnotationModelListener, IAnnotationModelListenerExtension {
+
+		@Override
+		public void modelChanged(AnnotationModelEvent event) {
+			//System.err.println ("Hello.  Got a annotation model change!");
+			
+			if (event.isValid() && !event.isEmpty()) {
+				boolean uhOh = false;
+				Annotation[] removedAnnotations = event.getRemovedAnnotations();
+				for (Annotation removedAnnotation : removedAnnotations) {
+					if (Util.isBCEOAnnoation(removedAnnotation)) {
+						uhOh = true;
+					}
+				}
+				if (uhOh) {
+					// seems overly dramatic, but hey
+					createBoxes();
+				}
+			}
+			
+		}
+
+		@Override
+		public void modelChanged(IAnnotationModel model) {
+			//System.err.println("I don't care about this model Changed event");
+			// this is around just so we can add this listener, sigh
+		}
+		
+		
+		
+
+	}
+	
+	
+	///////////////////////////
+	
+	
+	
+	
 	//Make multilineBoxes and inlineBpoxes based on annotations in editor viewer
 	private void createBoxes() {
-		ISourceViewer viewer = ((CompilationUnitEditor)editor).getViewer();
-		IAnnotationModel annotationModel = viewer.getAnnotationModel();
+//		ISourceViewer viewer = ((CompilationUnitEditor)editor).getViewer();
+//		IAnnotationModel annotationModel =  viewer.getAnnotationModel();
 		
 		// MULTILINE
 		List<Annotation[]> multiline = Util.getMultilineAnnotations(annotationModel);
-		MultilineBox b;
-		
-		Iterator<Annotation> annotations = annotationModel.getAnnotationIterator();
-		while (annotations.hasNext()) {
-			System.out.println(annotations.next().getType());
-		}
+		MultilineBox mb;
+		multilineBoxes.clear();
 		
 		for (int i = 0; i < multiline.size(); i++) {
-			b = new MultilineBox(annotationModel, multiline.get(i)[0], multiline.get(i)[1]);
-			multilineBoxes.add(b);
-			//System.out.println("No Crash");
-			//System.out.println(b);
+			mb = new MultilineBox(annotationModel, multiline.get(i)[0], multiline.get(i)[1]);
+			multilineBoxes.add(mb);
 		}
 		
 		
 		// INLINE
-		//List<IMarker> inline = Util.getInlineMarkers(res);
 		//TODO: Storage and drawing for inline markers
+		List<Annotation> inline = Util.getInlineAnnotations(annotationModel);
+		InlineBox ib;
+		inlineBoxes.clear();
+		
+		for (Annotation ann : inline) {
+			ib = new InlineBox(annotationModel, ann);
+			inlineBoxes.add(ib);
+		}
 	}
 	
 	
@@ -328,23 +385,18 @@ public class BoxConstrainedEditorOverlay  {
 
 		// collect all the drawing locations for all the boxes.
         for (MultilineBox b : multilineBoxes) {
-        	//params.add(boxText.getLocationAtOffset(boxText.getOffsetAtLine(b.start()-1)).y);
-        	//params.add(boxText.getLinePixel(b.start()-1));
-        	
-        	//params.add(boxText.getLocationAtOffset(b.startOffset()).y);
-        	//params.add(boxText.getLocationAtOffset(b.stopOffset()).y);
-        	
+
         	int startWidgetOffset, stopWidgetOffset;
         	int startPixelY = -1, stopPixelY = -1;
         	
-        	startWidgetOffset = srcViewerE5.modelOffset2WidgetOffset(b.getStartStyledTextOffset());
+        	startWidgetOffset = txtViewerExt.modelOffset2WidgetOffset(b.getStartStyledTextOffset());
         	if (startWidgetOffset != -1) {
         		startPixelY = styledText.getLocationAtOffset(startWidgetOffset).y;
         	} else {
         		somethingIsFolded = true;
         	}
         	
-        	stopWidgetOffset = srcViewerE5.modelOffset2WidgetOffset(b.getStopStyledTextOffset());
+        	stopWidgetOffset = txtViewerExt.modelOffset2WidgetOffset(b.getStopStyledTextOffset());
         	if (stopWidgetOffset != -1) {
         		stopPixelY = styledText.getLocationAtOffset(stopWidgetOffset).y;
         	} else {
@@ -363,6 +415,48 @@ public class BoxConstrainedEditorOverlay  {
         	
         }
         
+        for (InlineBox b : inlineBoxes) {
+        	
+        	int startWidgetOffset, stopWidgetOffset;
+     	
+        	Position stPos = b.getStyledTextPosition();
+        	
+        	startWidgetOffset = txtViewerExt.modelOffset2WidgetOffset(stPos.getOffset());
+        	int x = -1;
+        	int y = -1;
+        	int width = -1;
+        	if (startWidgetOffset != -1) {
+        		Point startLoc = styledText.getLocationAtOffset(startWidgetOffset);
+        		x = startLoc.x;
+        		y = startLoc.y;
+        	} else {
+        		somethingIsFolded = true;
+        	}
+        	
+        	stopWidgetOffset = startWidgetOffset + stPos.getLength();
+        	if (stopWidgetOffset != -1) {
+        		width = styledText.getLocationAtOffset(stopWidgetOffset).x - x;
+        	} else {
+        		somethingIsFolded = true;
+        	}
+
+        	// no need to check/store widget offsets... right?
+        	if (b.x != x) {
+        		redraw = true;
+        		b.x = x;
+        	}	
+        	if (b.y != y) {
+        		redraw = true;
+        		b.y = y;
+        	}
+        	if (b.width != width) {
+        		redraw = true;
+        		b.width = width;
+        	}
+        	
+        }
+        
+        
         //compare old drawing locations with new locations.  If unchanged, simply return.
         if (!redraw) {
         	return;  //short circuit if we don't need to redraw
@@ -377,10 +471,20 @@ public class BoxConstrainedEditorOverlay  {
 		Image newImage = new Image(null, editorRectangle.width, editorRectangle.height);
         GC gc = new GC(newImage);
         
-        IRegion[] visibleRegions = srcViewerE5.getCoveredModelRanges(srcViewerE5.getModelCoverage());
+        IRegion[] visibleRegions = txtViewerExt.getCoveredModelRanges(txtViewerExt.getModelCoverage());
         
         if (turnedOn) {
         	gc.setLineWidth(2);
+
+        	
+        	for (InlineBox b : inlineBoxes) {
+        		if (b.x != -1) {
+        			// its visible (not folded up)
+        			gc.setForeground(b.color);
+        			gc.drawRectangle(b.x, b.y, b.width, styledText.getLineHeight());
+        		}
+        		
+        	}
         	
         	if (!somethingIsFolded) {   //Don't go through big slow ifs/loops when no folding problems (aka correct use of boxes)
         		for (MultilineBox b : multilineBoxes) {
@@ -390,9 +494,7 @@ public class BoxConstrainedEditorOverlay  {
         			gc.setForeground(b.color);
             		gc.drawRectangle(1, startY, editorRectangle.width - 4, stopY - startY);
         		}
-        		
-        		
-        		
+
         	} else {  //something is folded, so we need to check starts/ends and recalculate
 	        	for (MultilineBox b : multilineBoxes) {
 	        		int startY = b.getStartPixelY();
@@ -411,7 +513,7 @@ public class BoxConstrainedEditorOverlay  {
 	    				if (b.getStopStyledTextOffset() < startY) {	//no region to draw, stop found before start
 	    					continue;
 	    				}
-	    				startY = srcViewerE5.modelOffset2WidgetOffset(startY);
+	    				startY = txtViewerExt.modelOffset2WidgetOffset(startY);
 	    				startY = styledText.getLocationAtOffset(startY).y;
 	    			}
 	    			
@@ -423,7 +525,7 @@ public class BoxConstrainedEditorOverlay  {
 	    				}
 	    				
 	    				stopY = visibleRegions[index].getOffset() + visibleRegions[index].getLength() - 1;
-	    				stopY = srcViewerE5.modelOffset2WidgetOffset(stopY);
+	    				stopY = txtViewerExt.modelOffset2WidgetOffset(stopY);
 	    				stopY = styledText.getLocationAtOffset(stopY).y;
 	    			}
 	        		

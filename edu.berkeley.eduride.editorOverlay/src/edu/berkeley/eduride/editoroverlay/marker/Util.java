@@ -127,6 +127,13 @@ public class Util {
 	}
 	
 	
+	public static boolean isBCEOAnnoation(Annotation ann) {
+		String type = ann.getType();
+		return (type.equals(INLINE_ANNOTATIONID) ||
+				type.equals(START_ANNOTATIONID) || 
+				type.equals(STOP_ANNOTATIONID));
+	}
+	
 	//////////// 
 	///// inline
 
@@ -187,15 +194,17 @@ public class Util {
 	}
 
 
-	public static boolean createInlineMarker(IResource resource, int line,
-			int charStart, int charStop, String id) {
+	public static boolean createInlineMarker(IResource resource, 
+			int offsetStart, int offsetStop, String id) {
 		try {
 			IMarker m = resource.createMarker(INLINE_MARKERID);
 			deleteInlineMarkersWithId(resource, id); // delete old ones once we've made this
 
-			m.setAttribute(IMarker.LINE_NUMBER, line);
-			m.setAttribute(IMarker.CHAR_START, charStart);
-			m.setAttribute(IMarker.CHAR_END, charStop);
+			//TODO -- this ignores the line number when CHAR_START is used...
+			//m.setAttribute(IMarker.LINE_NUMBER, line);
+			
+			m.setAttribute(IMarker.CHAR_START, offsetStart);
+			m.setAttribute(IMarker.CHAR_END, offsetStop);
 			m.setAttribute("id", id);
 			m.setAttribute(IMarker.MESSAGE, id); // text of the annotation
 			m.setAttribute(IMarker.USER_EDITABLE, true);
@@ -217,10 +226,12 @@ public class Util {
 		Iterator<Annotation> it = am.getAnnotationIterator();
 		while (it.hasNext()) {
 			Annotation annotation = it.next();
-			if (annotation.getType().equals(START_ANNOTATIONID)) {  //kim changed == to .equals
-				startannotations.add(annotation);
-			} else if (annotation.getType().equals(STOP_ANNOTATIONID)) {  //== to .equals
-				stopannotations.add(annotation);
+			if (!(annotation.isMarkedDeleted())) {
+				if (annotation.getType().equals(START_ANNOTATIONID)) { 
+					startannotations.add(annotation);
+				} else if (annotation.getType().equals(STOP_ANNOTATIONID)) {
+					stopannotations.add(annotation);
+				}
 			}
 		}
 		for (Annotation startannotation : startannotations) {
