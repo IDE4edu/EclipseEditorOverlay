@@ -93,7 +93,7 @@ public class BoxConstrainedEditorOverlay  {
 				ekpl.res = ResourceUtil.getResource(editor.getEditorInput());
 				if (ekpl.res != null) {	
 					System.out.println("making inline");
-					Util.createInlineMarker(ekpl.res, ekpl.styledText.getOffsetAtLine(8)+5, ekpl.styledText.getOffsetAtLine(8)+25, "yeah");
+					Util.createInlineMarker(ekpl.res, ekpl.styledText.getOffsetAtLine(8)+5, ekpl.styledText.getOffsetAtLine(8)+20, "yeah");
 					System.out.println("making multiline");
 					Util.createMultiLine(ekpl.res, 12, 20, "yeah2");
 					Util.createMultiLine(ekpl.res, 22, 25, "box3");
@@ -172,6 +172,9 @@ public class BoxConstrainedEditorOverlay  {
 	
 	
 	
+
+	//TODO: Don't turn on if there are no annotations
+	
 	public void toggle() {
 		if (!turnedOn) {
 			createBoxes();
@@ -180,9 +183,6 @@ public class BoxConstrainedEditorOverlay  {
 			undecorate();
 		}
 	}
-	
-	
-
 	
 	//install any listeners for drawing
 	private void decorate() {
@@ -240,10 +240,7 @@ public class BoxConstrainedEditorOverlay  {
 
 		// Intercept key presses, if turned on stop key presses
 		
-		//TODO Kim's consolidated To Do List:
-		//1. BAD CRASH: Highlight a region s.t. it covers a marker and the cursor is in a box, press delete or any key.
-		//    Annotation gets deleted, code explodes from null pointer.  Does get caught by keypress event, how do we handle it?
-		//2. detect/catch/stop paste events outside of boxes
+		//TODO detect/catch/stop paste events outside of boxes
 		
 		@Override
 		public void verifyKey(VerifyEvent event) {
@@ -255,17 +252,16 @@ public class BoxConstrainedEditorOverlay  {
 			}
 			
 			
-			int keyCode = event.keyCode;
+			//int keyCode = event.keyCode;
 			char character = event.character;
+			int int_char = (int)character;
 			
-			// allow arrows and other non-input keys?  PAGE+UP, END, etc...
+			// back to using int_char...  checking keycode instead allowed keypad and weird things
 			// TODO better way to do this??  I think this gets all those keys...
-			if (keyCode >= SWT.ARROW_UP) {
-					// ((int) character == 0)   seems to work also?
+			if (int_char == 0) {
 				event.doit = true;
 				return;
 			}
-			
 			
 			int widgetOffset = txtViewerExt.widgetOffset2ModelOffset(caretOffset); // account for folding
 
@@ -286,6 +282,7 @@ public class BoxConstrainedEditorOverlay  {
 				if (keyEventInBox(widgetOffset, bStartOffset, bStopOffset)) {
 					event.doit = allowKeyEventInBox(widgetOffset, b,
 							bStartOffset, bStopOffset, character);
+					
 					return;
 				}
 			}
@@ -296,7 +293,17 @@ public class BoxConstrainedEditorOverlay  {
 		
 		
 		private boolean keyEventInBox (int offset, int bStartOffset, int bStopOffset) {
-			return ((offset > bStartOffset) && (offset < bStopOffset - 1));
+			boolean inBox = ((offset > bStartOffset) && (offset < bStopOffset - 1));
+			
+			if (inBox) {   //if we have a selection that crosses an annotation, don't allow typing!
+				if (!(sel.getLength() == 0)) {
+					if ((sel.getOffset() <= bStartOffset) || (sel.getOffset() + sel.getLength() >= bStopOffset - 1)) {
+						inBox = false;
+					}
+				}
+			}
+			
+			return inBox;
 		}
 		
 		// might need to specialize for box type, so kept Box argument
@@ -338,6 +345,8 @@ public class BoxConstrainedEditorOverlay  {
 					// end of the box, you can't delete that!
 					allowed = false;
 				}
+			} else if (character == SWT.CR || character == SWT.LF) {
+				allowed = false;
 			}
 			return allowed;
 		}
@@ -408,7 +417,6 @@ public class BoxConstrainedEditorOverlay  {
 		
 		
 		// INLINE
-		//TODO: Storage and drawing for inline markers
 		List<Annotation> inline = Util.getInlineAnnotations(annotationModel);
 		InlineBox ib;
 		inlineBoxes.clear();
@@ -485,7 +493,7 @@ public class BoxConstrainedEditorOverlay  {
      	
         	Position stPos = b.getStyledTextPosition();
         	
-        	startWidgetOffset = txtViewerExt.modelOffset2WidgetOffset(stPos.getOffset());
+        	startWidgetOffset = txtViewerExt.modelOffset2WidgetOffset(stPos.getOffset()) + 1;  //adjusting to match keyverify event
         	int x = -1;
         	int y = -1;
         	int width = -1;
@@ -497,7 +505,7 @@ public class BoxConstrainedEditorOverlay  {
         		somethingIsFolded = true;
         	}
         	
-        	stopWidgetOffset = startWidgetOffset + stPos.getLength();
+        	stopWidgetOffset = startWidgetOffset + stPos.getLength() - 3;  //adjusting to match keyverify event
         	if (stopWidgetOffset != -1) {
         		width = styledText.getLocationAtOffset(stopWidgetOffset).x - x;
         	} else {
