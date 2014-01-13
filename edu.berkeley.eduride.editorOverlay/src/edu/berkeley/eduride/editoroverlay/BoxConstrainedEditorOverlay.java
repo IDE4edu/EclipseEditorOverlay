@@ -24,13 +24,19 @@ import org.eclipse.swt.custom.VerifyKeyListener;
 import org.eclipse.swt.events.PaintEvent;
 import org.eclipse.swt.events.PaintListener;
 import org.eclipse.swt.events.VerifyEvent;
+import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Point;
+import org.eclipse.swt.graphics.RGB;
 import org.eclipse.swt.graphics.Rectangle;
+import org.eclipse.swt.widgets.ColorDialog;
 import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.MessageBox;
+import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IEditorPart;
+import org.eclipse.ui.IWorkbenchPart;
 import org.eclipse.ui.ide.ResourceUtil;
 import org.eclipse.ui.part.FileEditorInput;
 import org.eclipse.ui.texteditor.AbstractDecoratedTextEditor;
@@ -92,11 +98,11 @@ public class BoxConstrainedEditorOverlay  {
 				
 				ekpl.res = ResourceUtil.getResource(editor.getEditorInput());
 				if (ekpl.res != null) {	
-					System.out.println("making inline");
-					Util.createInlineMarker(ekpl.res, ekpl.styledText.getOffsetAtLine(8)+5, ekpl.styledText.getOffsetAtLine(8)+20, "yeah");
-					System.out.println("making multiline");
-					Util.createMultiLine(ekpl.res, 12, 20, "yeah2");
-					Util.createMultiLine(ekpl.res, 22, 25, "box3");
+					//System.out.println("making inline");
+					//Util.createInlineMarker(ekpl.res, ekpl.styledText.getOffsetAtLine(8)+5, ekpl.styledText.getOffsetAtLine(8)+20, "yeah");
+					//System.out.println("making multiline");
+					//Util.createMultiLine(ekpl.res, 12, 20, "yeah2");
+					//Util.createMultiLine(ekpl.res, 22, 25, "box3");
 				}
 			}
 			return ekpl;
@@ -251,7 +257,6 @@ public class BoxConstrainedEditorOverlay  {
 				return;
 			}
 			
-			
 			//int keyCode = event.keyCode;
 			char character = event.character;
 			int int_char = (int)character;
@@ -290,7 +295,6 @@ public class BoxConstrainedEditorOverlay  {
 			event.doit = false;
 			return;
 		}
-		
 		
 		private boolean keyEventInBox (int offset, int bStartOffset, int bStopOffset) {
 			boolean inBox = ((offset > bStartOffset) && (offset < bStopOffset - 1));
@@ -424,6 +428,12 @@ public class BoxConstrainedEditorOverlay  {
 		for (Annotation ann : inline) {
 			ib = new InlineBox(annotationModel, ann);
 			inlineBoxes.add(ib);
+		}
+		
+		//Did we lose all of our markers?
+		if (multilineBoxes.size() == 0 && inlineBoxes.size() == 0) {
+			System.out.println("empty list");
+			clearBackground();
 		}
 	}
 	
@@ -616,13 +626,206 @@ public class BoxConstrainedEditorOverlay  {
 	
 	
 	private void clearBackground() {
-		Image oldImage = styledText.getBackgroundImage();
-        styledText.setBackgroundImage(null);
-        if (oldImage != null)
-            oldImage.dispose();
+			Image oldImage = styledText.getBackgroundImage();
+			styledText.setBackgroundImage(null);
+			if (oldImage != null)
+				oldImage.dispose();
+			styledText.setBackgroundImage(null);
+	}
+
+	
+
+	
+	
+	
+	
+	//////////////////////
+	
+	
+	
+	
+
+//TODO: This belongs in an authoring plugin, hooked up to some button!
+//Move over everything except for the keypress listener...  we still need all the drawing, boxes, feedback, etc...  maybe just add "author" flag?
+
+//Problem: When deleting markers, if all boxes are deleted, last box has a "ghost" on the background
+//Problem: if two boxes get the same name, the first disappears (might not be a real problem, can't find example)
+//Problem: can't draw boxes at very start or very end of editor...  only a minor issue
+	
+	
+//For testing, put this in verifykey event or something:
+//		event.doit = false;
+//		if ((int)event.character == SWT.DEL)
+//			deleteMarker();
+//		else
+//			createMarkers();
+//		return;
+	
+	
+	//Create a box around the currently selected region.
+	//Prompts user for confirmation, also allows optional color picking.
+	//Adds new markers.
+	public void createMarkers() {
+		//Apparently, this is how we get a shell for dialogs
+		Shell shell = editor.getSite().getWorkbenchWindow().getShell();
+		
+		if (sel.getLength() == 0) {
+			MessageBox dialog = new MessageBox(shell, SWT.ICON_ERROR | SWT.OK);
+			dialog.setText("Box Creation Error");
+			dialog.setMessage("Error: Please select (highlight) a region before clicking \"Create Box\".");
+			int returnCode = dialog.open();
+			
+			return;
+		}
+		
+		int startLine = sel.getStartLine();
+		int stopLine = sel.getEndLine();
+		
+		if (startLine == stopLine) {
+			promptInLine(startLine, shell);
+		
+		} else {
+			promptMultiLine(startLine, stopLine, shell);
+		}
+		
+		createBoxes();
+		drawBoxes();
+	}
+	
+	private void promptInLine(int startLine, Shell shell) {
+		int startOff = sel.getOffset() - 1;
+		int stopOff = startOff + sel.getLength() + 3;
+		
+		if (!isValidBox(startOff + 1, stopOff - 2)) {
+			MessageBox dialog = new MessageBox(shell, SWT.ICON_ERROR | SWT.OK);
+			dialog.setText("Box Creation Error");
+			dialog.setMessage("Error: Boxes cannot overlap.  Please select a valid region.");
+			int returnCode = dialog.open();
+			return;
+		}
+		
+		MessageBox dialog = new MessageBox(shell, SWT.ICON_QUESTION | SWT.YES | SWT.NO | SWT.CANCEL);
+		dialog.setText("Create Box");
+		dialog.setMessage("Creating new In-line Box around current selection. Would you like to pick a color?");
+		int returnCode = dialog.open();
+		
+		if (returnCode == SWT.YES) {  //get color, cram it into annotation's text, read it back later
+			Color c = promptColor(shell);
+			Util.createInlineMarker(res, startOff, stopOff, "ibox" + startOff + Util.colorToString(c));
+		}
+		if (returnCode == SWT.NO) {
+			Util.createInlineMarker(res, startOff, stopOff, "ibox" + startOff);
+		}
+	}
+	
+	private void promptMultiLine(int startLine, int stopLine, Shell shell) {
+		int startOff = styledText.getOffsetAtLine(startLine);
+		int stopOff = styledText.getOffsetAtLine(stopLine);
+		
+		if (!isValidBox(startOff, stopOff)) {
+			MessageBox dialog = new MessageBox(shell, SWT.ICON_ERROR | SWT.OK);
+			dialog.setText("Box Creation Error");
+			dialog.setMessage("Error: Boxes cannot overlap.  Please select a valid region.");
+			int returnCode = dialog.open();
+			return;
+		}
+		
+		startLine += 1;
+		stopLine += 2;
+	
+		MessageBox dialog = new MessageBox(shell, SWT.ICON_QUESTION | SWT.YES | SWT.NO | SWT.CANCEL);
+		dialog.setText("Create Box");
+		dialog.setMessage("Creating new Multi-line Box around current selection. Would you like to pick a color?");
+		int returnCode = dialog.open();
+		
+		if (returnCode == SWT.YES) {//get color, cram it into annotation's text, read it back later
+			Color c = promptColor(shell);
+			Util.createMultiLine(res, startLine, stopLine, "mbox" + startLine + stopLine + Util.colorToString(c));
+		}
+		if (returnCode == SWT.NO) {
+			Util.createMultiLine(res, startLine, stopLine, "mbox" + startLine + stopLine);
+		}
+	}
+	
+	//make sure our new box doesn't overlap others before we draw it
+	private boolean isValidBox(int startOff, int stopOff) {
+		for (Box b : multilineBoxes) {
+			int bStartOffset = b.getStartStyledTextOffset();
+			int bStopOffset = b.getStopStyledTextOffset();
+		
+			if (((startOff > bStartOffset) && (startOff < bStopOffset - 1))
+				|| ((stopOff > bStartOffset) && (stopOff < bStopOffset - 1))
+				|| (startOff < bStartOffset) && (stopOff > bStopOffset - 1)) {
+				return false;
+			}
+		}
+		
+		for (Box b : inlineBoxes) {
+			int bStartOffset = b.getStartStyledTextOffset();
+			int bStopOffset = b.getStopStyledTextOffset();
+		
+			if (((startOff > bStartOffset) && (startOff < bStopOffset - 1))
+					|| ((stopOff > bStartOffset) && (stopOff < bStopOffset - 1))
+					|| (startOff < bStartOffset) && (stopOff > bStopOffset - 1)) {
+				return false;
+			}
+		}
+		return true;
+	}
+	
+	//Pop up a fancy color dialog, returns user's color choice
+	private Color promptColor(Shell shell) {
+		ColorDialog dlg = new ColorDialog(shell);
+        dlg.setRGB(new RGB(200, 120, 255));
+        dlg.setText("Choose a Color");
+        RGB rgb = dlg.open();
+        return new Color(null, rgb);
+	}
+	
+	
+	
+	//Deletes the box the caret (blinky cursor line thing) is currently inside of
+	public void deleteMarker() {
+		//Apparently, this is how we get a shell for dialogs
+		Shell shell = editor.getSite().getWorkbenchWindow().getShell();
+		
+		//caretOffset = offset of last click/cursor position
+		int offset = txtViewerExt.widgetOffset2ModelOffset(caretOffset);
+		
+		Box deleteThisBox = null;  //don't delete in the middle of the for-each, delete calls createboxes which crashes stuff
+		
+		for (Box b : multilineBoxes) {
+			int bStartOffset = b.getStartStyledTextOffset();
+			int bStopOffset = b.getStopStyledTextOffset();
+		
+			if ((offset > bStartOffset) && (offset < bStopOffset - 1)) {
+				deleteThisBox = b;
+			}
+		}
+		
+		for (Box b : inlineBoxes) {
+			int bStartOffset = b.getStartStyledTextOffset();
+			int bStopOffset = b.getStopStyledTextOffset();
+		
+			if ((offset > bStartOffset) && (offset < bStopOffset - 1)) {
+				deleteThisBox = b;
+			}
+		}
+		if (deleteThisBox != null) {
+			MessageBox dialog = new MessageBox(shell, SWT.ICON_QUESTION | SWT.YES | SWT.NO);
+			dialog.setText("Delete Box");
+			dialog.setMessage("Would you like to delete the box your caret/cursor is currently in?");
+			int returnCode = dialog.open();
+			
+			if (returnCode == SWT.YES) {
+				deleteThisBox.delete();
+			}
+		} else {
+			MessageBox dialog = new MessageBox(shell, SWT.ICON_ERROR | SWT.OK);
+			dialog.setText("Deletion Error");
+			dialog.setMessage("Error: Please click inside the box you're removing before clicking \"Delete\".");
+			int returnCode = dialog.open();
+		}
 	}
 	
 }
-
-	
-

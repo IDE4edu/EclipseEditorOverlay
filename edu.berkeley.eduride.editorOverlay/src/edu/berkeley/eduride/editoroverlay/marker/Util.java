@@ -17,6 +17,7 @@ import org.eclipse.jface.text.Position;
 import org.eclipse.jface.text.source.Annotation;
 import org.eclipse.jface.text.source.AnnotationModel;
 import org.eclipse.jface.text.source.IAnnotationModel;
+import org.eclipse.swt.graphics.Color;
 
 import edu.berkeley.eduride.editoroverlay.EditorOverlayActivator;
 
@@ -305,5 +306,29 @@ public class Util {
 		}
 
 	}
+	
+	
+	
+	
+	/////////////////  Kim's color things
+	
+	public static String colorToString (Color c) {
+		return "{" + c.getRed() + "," + c.getGreen() + "," + c.getBlue() + "}";
+	}
+	
+	public static Color stringToColor (String s) {
+		//if (s.matches("\\{\\d+,\\d+,\\d+\\}")) {  //blurgh
+		try {
+			s = s.substring(s.indexOf("{") + 1, s.length() - 1);
+			String[] colors = s.split(",");
+			int red = Integer.parseInt(colors[0]);
+			int green = Integer.parseInt(colors[1]);
+			int blue = Integer.parseInt(colors[2]);
+			return new Color(null, red, green, blue);
+		} catch (Exception e) {
+			return new Color(null, 200, 120, 255);
+		}
+	}
 
+	
 }

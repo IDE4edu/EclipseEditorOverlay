@@ -1,9 +1,13 @@
 package edu.berkeley.eduride.editoroverlay.model;
 
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.jface.text.Position;
 import org.eclipse.jface.text.source.Annotation;
 import org.eclipse.jface.text.source.IAnnotationModel;
 import org.eclipse.swt.graphics.Color;
+import org.eclipse.ui.texteditor.SimpleMarkerAnnotation;
+
+import edu.berkeley.eduride.editoroverlay.marker.Util;
 
 public class Box {
 
@@ -15,12 +19,12 @@ public class Box {
 	public Box(IAnnotationModel m, Annotation start) {
 		this.model = m;
 		this.start = start;
-		this.color = getColor();
+		this.color = Util.stringToColor(start.getText());  //cram color into text when creating, restore color here
 	}
 	
 	
 	//can do static purple or semi-random purples
-	protected Color getColor() {
+	protected Color getDefaultColor() {
 		return new Color(null, 200, 120, 255);
 		//return new Color(null, 170 + (int)(60 * Math.random()), 90 + (int)(60 * Math.random()), 205 + (int)(40 * Math.random()));
 	}
@@ -50,6 +54,14 @@ public class Box {
 		return (pos.getOffset() + pos.getLength());
 	}
 	
-	
+	public void delete() {
+		try {
+			((SimpleMarkerAnnotation)start).getMarker().delete();
+		} catch (CoreException e) {
+			System.out.println("whoops");
+		}
+		model.removeAnnotation(start);
+		
+	}
 
 }

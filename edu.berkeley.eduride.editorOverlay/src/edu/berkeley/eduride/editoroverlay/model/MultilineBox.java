@@ -1,10 +1,12 @@
 package edu.berkeley.eduride.editoroverlay.model;
 
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.jface.text.Position;
 import org.eclipse.jface.text.source.Annotation;
 import org.eclipse.jface.text.source.IAnnotationModel;
 import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.graphics.Color;
+import org.eclipse.ui.texteditor.SimpleMarkerAnnotation;
 
 public class MultilineBox extends Box {
 	//start and stop are the line numbers corresponding to where user can type
@@ -90,6 +92,15 @@ public class MultilineBox extends Box {
 		return st.getLineAtOffset(getStopStyledTextOffset());
 	}
 	
+	public void delete() {
+		super.delete();
+		try {
+			((SimpleMarkerAnnotation)stop).getMarker().delete();
+		} catch (CoreException e) {
+			System.out.println("whoops");
+		}
+		model.removeAnnotation(stop);
+	}
 	
 	
 	public String toString() {
@@ -98,14 +109,5 @@ public class MultilineBox extends Box {
 		toReturn += "\nStop: " + stop + ", Line: " + model.getPosition(stop).getOffset();
 		return toReturn;
 	}
-	
-	
-	
-	
-	
-	
-	
-
-
 	
 }
