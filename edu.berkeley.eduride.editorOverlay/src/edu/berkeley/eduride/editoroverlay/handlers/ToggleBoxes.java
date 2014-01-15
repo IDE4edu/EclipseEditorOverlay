@@ -13,7 +13,7 @@ import org.eclipse.ui.handlers.HandlerUtil;
 
 import edu.berkeley.eduride.editoroverlay.BoxConstrainedEditorOverlay;
 
-public class InstallKeyVerifyListener implements IHandler2 {
+public class ToggleBoxes implements IHandler2 {
 
 	@Override
 	public void addHandlerListener(IHandlerListener handlerListener) {

@@ -3,50 +3,31 @@
 <plugin>
    <extension
          point="org.eclipse.ui.commands">
-      <category
-            description="whatever"
-            id="edu.berkeley.eduride.editorOverlay.category1"
-            name="EditorStuff">
-      </category>
       <command
+            category="edu.berkeley.eduride.editorOverlay.category1"
             categoryId="edu.berkeley.eduride.editorOverlay.category1"
-            defaultHandler="edu.berkeley.eduride.editoroverlay.handlers.InstallKeyVerifyListener"
-            id="edu.berkeley.eduride.editorOverlay.installKeyVerifyListener"
-            name="Install Key Verify Listener">
+            defaultHandler="edu.berkeley.eduride.editoroverlay.handlers.ToggleBoxes"
+            id="edu.berkeley.eduride.editorOverlay.toggleBoxes"
+            name="Toggle Boxes">
       </command>
+      <category
+            id="edu.berkeley.eduride.editorOverlay.category1"
+            name="Category 1">
+      </category>
    </extension>
    <extension
          point="org.eclipse.ui.menus">
       <menuContribution
-            locationURI="toolbar:org.eclipse.ui.main.toolbar?after=additions">
-         <toolbar
-               id="edu.berkeley.eduride.toolbars.main">
-            <command
-                  commandId="edu.berkeley.eduride.editorOverlay.installKeyVerifyListener"
-                  icon="icons/1381460317_keyboard_red.png"
-                  label="Install Key Verify Listener"
-                  style="push"
-                  tooltip="For Editor Plugin">
-            </command>
-         </toolbar>
-      </menuContribution>
-      <menuContribution
-            locationURI="menu:CompilationUnitRulerContext?after=org.eclipse.ui.texteditor.TaskRulerAction">
-         <menu
-               id="edu.berkeley.eduride.menu.CompliationUnitGutter"
-               label="Add Edit Constraint...">
-            <command
-                  commandId="edu.berkeley.eduride.editorOverlay.InstallMarker"
-                  id="Install Marker"
-                  label="Install Marker at Selection"
-                  style="push">
-            </command>
-         </menu>
+            allPopups="true"
+            locationURI="popup:#CompilationUnitEditorContext?after=save">
          <command
-               commandId="edu.berkeley.eduride.editorOverlay.InstallMarker"
-               id="Install Marker"
-               label="Install Marker..."
+               commandId="edu.berkeley.eduride.editorOverlay.toggleBoxes"
+               icon="icons/boxMenuIcon.png"
+               label="Toggle Boxes"
                style="push">
+            <visibleWhen
+                  checkEnabled="true">
+            </visibleWhen>
          </command>
       </menuContribution>
    </extension>
