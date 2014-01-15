@@ -144,7 +144,6 @@ public class Util {
 					IResource.DEPTH_ZERO);
 			return new ArrayList<IMarker>(Arrays.asList(marks));
 		} catch (CoreException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 			return null;
 		}
@@ -185,7 +184,6 @@ public class Util {
 				}
 			}
 		} catch (CoreException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 			return ret;
 		}
@@ -281,7 +279,7 @@ public class Util {
 	public static void DEBUGMarkersToConsole(IResource res) {
 		List<IMarker[]> ala = new ArrayList<IMarker[]>();
 		List<IMarker> al = new ArrayList<IMarker>();
-		// TODO Auto-generated method stub
+		
 		ala = getMultilineMarkers(res);
 		for (IMarker[] ms : ala) {
 			try {

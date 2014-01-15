@@ -40,7 +40,7 @@ public class InstallKeyVerifyListener implements IHandler2 {
 			IEditorPart editor = page.getActiveEditor();
 			if (BoxConstrainedEditorOverlay.shouldInstall(editor)) {
 				BoxConstrainedEditorOverlay evkl = BoxConstrainedEditorOverlay.ensureInstalled(editor);
-				//evkl won't be null becuase we already check shouldInstall
+				//evkl won't be null because we already check shouldInstall
 				evkl.toggle();
 				
 			}

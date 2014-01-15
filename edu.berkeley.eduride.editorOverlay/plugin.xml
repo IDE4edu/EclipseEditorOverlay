@@ -14,12 +14,6 @@
             id="edu.berkeley.eduride.editorOverlay.installKeyVerifyListener"
             name="Install Key Verify Listener">
       </command>
-      <command
-            categoryId="edu.berkeley.eduride.editorOverlay.category1"
-            defaultHandler="edu.berkeley.eduride.editoroverlay.handlers.InstallMarker"
-            id="edu.berkeley.eduride.editorOverlay.InstallMarker"
-            name="Install Marker">
-      </command>
    </extension>
    <extension
          point="org.eclipse.ui.menus">
@@ -54,19 +48,6 @@
                label="Install Marker..."
                style="push">
          </command>
-      </menuContribution>
-      <menuContribution
-            locationURI="toolbar:org.eclipse.ui.main.toolbar?after=additions">
-         <toolbar
-               id="edu.berkeley.eduride.toolbars.main">
-            <command
-                  commandId="edu.berkeley.eduride.editorOverlay.InstallMarker"
-                  icon="icons/RedFlag.jpg"
-                  label="Install Marker at Selection"
-                  style="push"
-                  tooltip="For Editor Markers">
-            </command>
-         </toolbar>
       </menuContribution>
    </extension>
    <extension
