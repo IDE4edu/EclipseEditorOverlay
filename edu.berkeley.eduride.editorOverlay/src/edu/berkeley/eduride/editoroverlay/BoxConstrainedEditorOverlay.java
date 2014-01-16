@@ -451,7 +451,7 @@ public class BoxConstrainedEditorOverlay  {
 	
 	// are there any boxes to draw?
 	private boolean hasBoxes() {
-		return (multilineBoxes.size() == 0 && inlineBoxes.size() == 0);
+		return (!(multilineBoxes.size() == 0 && inlineBoxes.size() == 0));
 	}
 	
 	
