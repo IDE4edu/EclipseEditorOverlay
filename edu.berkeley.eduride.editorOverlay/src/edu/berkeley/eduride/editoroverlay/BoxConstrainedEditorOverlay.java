@@ -192,6 +192,8 @@ public class BoxConstrainedEditorOverlay  {
 		}
 	}
 	
+	public boolean isTurnedOn() { return turnedOn; }
+	
 	//install any listeners for drawing
 	private void decorate() {
 		if (turnedOn == true) {  //already on!
@@ -662,21 +664,11 @@ public class BoxConstrainedEditorOverlay  {
 	
 	
 
-//TODO: This belongs in an authoring plugin, hooked up to some button!
-//Move over everything except for the keypress listener...  we still need all the drawing, boxes, feedback, etc...  maybe just add "author" flag?
-
-//Problem: When deleting markers, if all boxes are deleted, last box has a "ghost" on the background
-//Problem: if two boxes get the same name, the first disappears (might not be a real problem, can't find example)
+//TODO: This belongs in an authoring plugin
+	
+//These methods are called through the authoring/instructor plugin
+	
 //Problem: can't draw boxes at very start or very end of editor...  only a minor issue
-	
-	
-//For testing, put this in verifykey event or something:
-//		event.doit = false;
-//		if ((int)event.character == SWT.DEL)
-//			deleteMarker();
-//		else
-//			createMarkers();
-//		return;
 	
 	
 	//Create a box around the currently selected region.
@@ -723,14 +715,14 @@ public class BoxConstrainedEditorOverlay  {
 		
 		MessageBox dialog = new MessageBox(shell, SWT.ICON_QUESTION | SWT.YES | SWT.NO | SWT.CANCEL);
 		dialog.setText("Create Box");
-		dialog.setMessage("Creating new In-line Box around current selection. Would you like to pick a color?");
+		dialog.setMessage("Creating new In-line Box around current selection.\nUse default color?");
 		int returnCode = dialog.open();
 		
-		if (returnCode == SWT.YES) {  //get color, cram it into annotation's text, read it back later
+		if (returnCode == SWT.NO) {  //get color, cram it into annotation's text, read it back later
 			Color c = promptColor(shell);
 			Util.createInlineMarker(res, startOff, stopOff, "ibox" + startOff + Util.colorToString(c));
 		}
-		if (returnCode == SWT.NO) {
+		if (returnCode == SWT.YES) {
 			Util.createInlineMarker(res, startOff, stopOff, "ibox" + startOff);
 		}
 	}
@@ -752,14 +744,14 @@ public class BoxConstrainedEditorOverlay  {
 	
 		MessageBox dialog = new MessageBox(shell, SWT.ICON_QUESTION | SWT.YES | SWT.NO | SWT.CANCEL);
 		dialog.setText("Create Box");
-		dialog.setMessage("Creating new Multi-line Box around current selection. Would you like to pick a color?");
+		dialog.setMessage("Creating new Multi-line Box around current selection.\nUse default color?");
 		int returnCode = dialog.open();
 		
-		if (returnCode == SWT.YES) {//get color, cram it into annotation's text, read it back later
+		if (returnCode == SWT.NO) {//get color, cram it into annotation's text, read it back later
 			Color c = promptColor(shell);
 			Util.createMultiLine(res, startLine, stopLine, "mbox" + startLine + stopLine + Util.colorToString(c));
 		}
-		if (returnCode == SWT.NO) {
+		if (returnCode == SWT.YES) {
 			Util.createMultiLine(res, startLine, stopLine, "mbox" + startLine + stopLine);
 		}
 	}
