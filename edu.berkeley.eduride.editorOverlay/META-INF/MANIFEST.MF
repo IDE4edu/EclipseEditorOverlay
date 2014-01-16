@@ -25,3 +25,4 @@ Import-Package: org.eclipse.core.resources,
  org.eclipse.ui.ide,
  org.eclipse.ui.part,
  org.eclipse.ui.texteditor
+Export-Package: edu.berkeley.eduride.editoroverlay

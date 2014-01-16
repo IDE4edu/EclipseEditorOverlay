@@ -257,6 +257,7 @@ public class BoxConstrainedEditorOverlay  {
 				return;
 			}
 			
+			
 			//int keyCode = event.keyCode;
 			char character = event.character;
 			int int_char = (int)character;
@@ -434,7 +435,7 @@ public class BoxConstrainedEditorOverlay  {
 		if (multilineBoxes.size() == 0 && inlineBoxes.size() == 0) {
 			System.out.println("empty list");
 			clearBackground();
-		}
+		} 
 	}
 	
 	
