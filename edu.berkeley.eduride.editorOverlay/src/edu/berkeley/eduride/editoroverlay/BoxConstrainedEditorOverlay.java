@@ -184,7 +184,9 @@ public class BoxConstrainedEditorOverlay  {
 	public void toggle() {
 		if (!turnedOn) {
 			createBoxes();
-			decorate();
+			if (hasBoxes()) {
+				decorate();
+			}
 		} else {
 			undecorate();
 		}
@@ -216,9 +218,18 @@ public class BoxConstrainedEditorOverlay  {
 		if (turnedOn == true) {
 			turnedOn = false;
 			// Stop listeners
-			styledText.removePaintListener(boxPaint);
-			styledText.removeCaretListener(caretListener);
-			styledText.removeVerifyKeyListener(verifyKeyListener);
+			if (boxPaint != null) {
+				styledText.removePaintListener(boxPaint);
+			}
+			if (caretListener != null) {
+				styledText.removeCaretListener(caretListener);
+			}
+			if (verifyKeyListener!=null) {
+				styledText.removeVerifyKeyListener(verifyKeyListener);
+			}
+			if (annotationModelListener!=null) {
+				annotationModel.removeAnnotationModelListener(annotationModelListener);
+			}
 			clearBackground();
 		}
 	}
@@ -431,11 +442,16 @@ public class BoxConstrainedEditorOverlay  {
 			inlineBoxes.add(ib);
 		}
 		
-		//Did we lose all of our markers?
-		if (multilineBoxes.size() == 0 && inlineBoxes.size() == 0) {
-			System.out.println("empty list");
+		// TODO hack to fix something or other in authoring.  we should remediate
+		if (!hasBoxes()) {
 			clearBackground();
 		} 
+	}
+	
+	
+	// are there any boxes to draw?
+	private boolean hasBoxes() {
+		return (multilineBoxes.size() == 0 && inlineBoxes.size() == 0);
 	}
 	
 	
