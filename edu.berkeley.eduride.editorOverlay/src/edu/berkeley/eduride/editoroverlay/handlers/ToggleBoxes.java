@@ -15,6 +15,21 @@ import edu.berkeley.eduride.editoroverlay.BoxConstrainedEditorOverlay;
 
 public class ToggleBoxes implements IHandler2 {
 
+	private static IEditorPart getActiveEditor(ExecutionEvent event) throws ExecutionException {
+		// Get the active window
+		IWorkbenchWindow window = HandlerUtil.getActiveWorkbenchWindowChecked(event);
+		if (window == null)
+			return null;
+		// Get the active page
+		IWorkbenchPage page = window.getActivePage();
+		if (page == null)
+			return null;
+		IEditorPart editor = page.getActiveEditor();
+		
+		return editor;
+	}
+	
+	
 	@Override
 	public void addHandlerListener(IHandlerListener handlerListener) {
 		// TODO Auto-generated method stub
@@ -28,23 +43,21 @@ public class ToggleBoxes implements IHandler2 {
 	}
 
 	@Override
+	
+	// Finds the active editor, determines if BCEO can be used on it; if it
+	// can, ensures that it is installed, and then toggles.
 	public Object execute(ExecutionEvent event) throws ExecutionException {
-			// Get the active window
-			IWorkbenchWindow window = HandlerUtil.getActiveWorkbenchWindowChecked(event);
-			if (window == null)
-				return null;
-			// Get the active page
-			IWorkbenchPage page = window.getActivePage();
-			if (page == null)
-				return null;
-			IEditorPart editor = page.getActiveEditor();
-			if (BoxConstrainedEditorOverlay.shouldInstall(editor)) {
-				BoxConstrainedEditorOverlay evkl = BoxConstrainedEditorOverlay.ensureInstalled(editor);
-				//evkl won't be null because we already check shouldInstall
-				evkl.toggle();
-				
-			}
-			return null;
+		IEditorPart activeEditor = getActiveEditor(event);
+		
+		
+		if (BoxConstrainedEditorOverlay.shouldInstall(activeEditor)) {
+			BoxConstrainedEditorOverlay evkl = BoxConstrainedEditorOverlay
+					.ensureInstalled(activeEditor);
+			// evkl won't be null because we already check shouldInstall
+			evkl.toggle();
+
+		}
+		return null;
 	}
 
 	@Override
