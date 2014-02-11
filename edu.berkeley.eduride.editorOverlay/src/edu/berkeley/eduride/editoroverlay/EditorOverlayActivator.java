@@ -48,10 +48,12 @@ public class EditorOverlayActivator implements BundleActivator {
 	 */
 	public void start(BundleContext bundleContext) throws Exception {
 		EditorOverlayActivator.context = bundleContext;
+		
+		install();
 	}
 
-	
-	
+
+
 	/*
 	 * (non-Javadoc)
 	 * @see org.osgi.framework.BundleActivator#stop(org.osgi.framework.BundleContext)
@@ -59,5 +61,23 @@ public class EditorOverlayActivator implements BundleActivator {
 	public void stop(BundleContext bundleContext) throws Exception {
 		EditorOverlayActivator.context = null;
 	}
+	
+	
+	
+	
+	
+	//////////
+	
+	private static BCEOEditorEventListener editorListener = null;
+	
+	private static void install() {
+		
+		editorListener = new BCEOEditorEventListener(true);
+		
+		
+	}
+
+	
+	
 
 }

@@ -7,7 +7,7 @@ Bundle-Activator: edu.berkeley.eduride.editoroverlay.EditorOverlayActivator
 Bundle-Vendor: eduride
 Require-Bundle: org.eclipse.core.runtime,
  org.eclipse.ui,
- EduRideBasePlugin;bundle-version="1.0.2"
+ EduRideBasePlugin
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6
 Bundle-ActivationPolicy: lazy
 Import-Package: org.eclipse.core.resources,

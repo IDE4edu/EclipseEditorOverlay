@@ -103,5 +103,12 @@
             label="EduRide stopmarker">
       </specification>
    </extension>
+   <extension
+         name="Editor Overlay"
+         point="EduRideBasePlugin.startup">
+      <startup
+            class="edu.berkeley.eduride.editoroverlay.handlers.EdurideStartup">
+      </startup>
+   </extension>
 
 </plugin>
