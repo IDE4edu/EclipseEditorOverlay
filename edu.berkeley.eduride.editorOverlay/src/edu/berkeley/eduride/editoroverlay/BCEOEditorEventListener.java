@@ -17,15 +17,19 @@ public class BCEOEditorEventListener implements IPartListener2 {
 	public BCEOEditorEventListener(boolean install) {
 		
 		String errStr;
-		errStr = IPartListenerInstaller.installOnWorkbench(this);
+		// install listener for editor events
+		errStr = IPartListenerInstaller.installOnWorkbench(this, "BCEO");
 		if (errStr != null) {
 			System.err.println(errStr);
 		}
 		
+		// install on currently open editors
 		ArrayList<IEditorPart> eds = IPartListenerInstaller.getCurrentEditors();
 		for (IEditorPart ed : eds) {
 			installDance(ed);
 		}
+		
+		//System.out.println("BCEOEditorEventListener - yo");
 
 	}
 	
@@ -42,6 +46,7 @@ public class BCEOEditorEventListener implements IPartListener2 {
 	}
 	
 	private static void installDance(IEditorPart ed) {
+		BoxConstrainedEditorOverlay.ensureInstalled(ed);
 		// TODO install dance
 	}
 	

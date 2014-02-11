@@ -36,7 +36,6 @@ import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IEditorPart;
-import org.eclipse.ui.IWorkbenchPart;
 import org.eclipse.ui.ide.ResourceUtil;
 import org.eclipse.ui.part.FileEditorInput;
 import org.eclipse.ui.texteditor.AbstractDecoratedTextEditor;
@@ -50,15 +49,16 @@ import edu.berkeley.eduride.editoroverlay.model.InlineBox;
 import edu.berkeley.eduride.editoroverlay.model.MultilineBox;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 
 // one of these per editor that can be constrained by our boxes!
 public class BoxConstrainedEditorOverlay {
 
+	// the initial state of the boxes, when editor first opened
+	private final boolean START_TURNED_ON = true;
+
+	
 	private ITextEditor editor;
 	private IDocument doc;
 	private ITextSelection sel;
@@ -70,7 +70,7 @@ public class BoxConstrainedEditorOverlay {
 	private ArrayList<MultilineBox> multilineBoxes = new ArrayList<MultilineBox>();
 	private ArrayList<InlineBox> inlineBoxes = new ArrayList<InlineBox>();
 
-	private boolean turnedOn = false; // need to toggle this on setup
+	private boolean turnedOn = false;
 
 	private StyledText styledText;
 	private BoxPaintListener boxPaint;
@@ -99,11 +99,10 @@ public class BoxConstrainedEditorOverlay {
 		}
 		return false;
 	}
-	
-	
+
 	public static boolean shouldInstall(IFile file) {
 		// TODO check that it is a java file
-		return  edu.berkeley.eduride.base_plugin.UIHelper.containedInISA(file);
+		return edu.berkeley.eduride.base_plugin.UIHelper.containedInISA(file);
 	}
 
 	/*
@@ -132,6 +131,10 @@ public class BoxConstrainedEditorOverlay {
 	public BoxConstrainedEditorOverlay(IEditorPart editor) {
 		this.installMe(editor);
 
+		if (START_TURNED_ON) {
+			turnOn();
+		}
+		
 		this.res = ResourceUtil.getResource(editor.getEditorInput());
 	}
 
@@ -140,15 +143,12 @@ public class BoxConstrainedEditorOverlay {
 	// Currently, this is handled in ToggleBoxes.java.
 	private void installMe(IEditorPart editor) {
 		StyledText text = null;
-		// PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage().getEditors()
 		if (editor != null) {
 			text = (StyledText) editor.getAdapter(Control.class);
 			this.styledText = text;
 
 		}
 		if (text != null) {
-			// log("loggerInstall", "KeyPressInEditor installed in " +
-			// editor.getTitle());
 			this.editor = (ITextEditor) editor;
 			IDocumentProvider dp = this.editor.getDocumentProvider();
 			this.doc = dp.getDocument(editor.getEditorInput());
@@ -190,16 +190,24 @@ public class BoxConstrainedEditorOverlay {
 	// //////////////////
 	// ///////// OVERLAY CONTROLS
 
-	// TODO: Don't turn on if there are no annotations
 
+	public void turnOn() {
+		decorate();
+		turnedOn = true;
+	}
+
+	
+	public void turnOff() {
+		undecorate();
+		turnedOn = false;
+	}
+
+	
 	public void toggle() {
 		if (!turnedOn) {
-			createBoxes();
-			if (hasBoxes()) {
-				decorate();
-			}
+			turnOn();
 		} else {
-			undecorate();
+			turnOff();
 		}
 	}
 
@@ -209,44 +217,39 @@ public class BoxConstrainedEditorOverlay {
 
 	// install any listeners for drawing
 	private void decorate() {
-		if (turnedOn == true) { // already on!
-			return;
+		createBoxes();
+		if (hasBoxes()) {
+
+			// Add Listeners -
+			boxPaint = new BoxPaintListener();
+			styledText.addPaintListener(boxPaint);
+			caretListener = new CaretPositionListener();
+			styledText.addCaretListener(caretListener);
+			verifyKeyListener = new EditorOverlayVerifyKeyListener();
+			styledText.addVerifyKeyListener(verifyKeyListener);
+			annotationModelListener = new BCEOAnnotationModelListener();
+			annotationModel.addAnnotationModelListener(annotationModelListener);
 		}
-		turnedOn = true;
-
-		// Add Listeners -
-		boxPaint = new BoxPaintListener();
-		styledText.addPaintListener(boxPaint);
-		caretListener = new CaretPositionListener();
-		styledText.addCaretListener(caretListener);
-		verifyKeyListener = new EditorOverlayVerifyKeyListener();
-		styledText.addVerifyKeyListener(verifyKeyListener);
-		annotationModelListener = new BCEOAnnotationModelListener();
-		annotationModel.addAnnotationModelListener(annotationModelListener);
-
 		drawBoxes();
 	}
 
 	// stop listening when turned off
 	private void undecorate() {
-		if (turnedOn == true) {
-			turnedOn = false;
-			// Stop listeners
-			if (boxPaint != null) {
-				styledText.removePaintListener(boxPaint);
-			}
-			if (caretListener != null) {
-				styledText.removeCaretListener(caretListener);
-			}
-			if (verifyKeyListener != null) {
-				styledText.removeVerifyKeyListener(verifyKeyListener);
-			}
-			if (annotationModelListener != null) {
-				annotationModel
-						.removeAnnotationModelListener(annotationModelListener);
-			}
-			clearBackground();
+		// Stop listeners
+		if (boxPaint != null) {
+			styledText.removePaintListener(boxPaint);
 		}
+		if (caretListener != null) {
+			styledText.removeCaretListener(caretListener);
+		}
+		if (verifyKeyListener != null) {
+			styledText.removeVerifyKeyListener(verifyKeyListener);
+		}
+		if (annotationModelListener != null) {
+			annotationModel
+					.removeAnnotationModelListener(annotationModelListener);
+		}
+		clearBackground();
 	}
 
 	private class BoxPaintListener implements PaintListener {
@@ -473,6 +476,11 @@ public class BoxConstrainedEditorOverlay {
 		// big picture: create an image (newImage), edit with the gc, then set
 		// as styledtext background later
 		Rectangle editorRectangle = styledText.getClientArea();
+		if (editorRectangle.width==0 || editorRectangle.height==0) {
+			// if either is 0, then we aren't drawing, are we?
+			// and, the new Image() throws an exception
+			return;
+		}
 
 		// Do we need to redraw? if any box has changed anywhere, we do it all
 		// again
@@ -677,8 +685,8 @@ public class BoxConstrainedEditorOverlay {
 	}
 
 	// ////////////////////
-	//  AUTHORING 
-	
+	// AUTHORING
+
 	// These methods are called through the authoring/instructor plugin.
 	// we could refactor, but they use sooooo many local fields...
 
