@@ -59,9 +59,9 @@ public class BoxConstrainedEditorOverlay {
 	private final boolean START_TURNED_ON = true;
 
 	
-	private ITextEditor editor;
-	private IDocument doc;
-	private ITextSelection sel;
+	private ITextEditor editor = null;
+	private IDocument doc = null;
+	private ITextSelection sel = null;
 	private static HashMap<IEditorPart, BoxConstrainedEditorOverlay> installedOn = new HashMap<IEditorPart, BoxConstrainedEditorOverlay>();
 	ISourceViewer srcViewer;
 	IAnnotationModel annotationModel;
@@ -80,12 +80,22 @@ public class BoxConstrainedEditorOverlay {
 	private IResource res;
 	private int caretOffset = 0;
 
+	
+	public static BoxConstrainedEditorOverlay getBCEO(IEditorPart editor) {
+		BoxConstrainedEditorOverlay bceo = null;
+		if (editor != null) {
+			bceo = installedOn.get(editor);
+		}
+		return bceo;
+	}
+	
 	/*
 	 * Determines whether this is an appropriate editor in which to use BCEO
 	 * 
 	 * @param editor could be null
 	 */
 	public static boolean shouldInstall(IEditorPart editor) {
+		// TODO worry if the editor is 'immature'?
 		if (editor != null) {
 			// first, needs to be a text editor
 			if (editor instanceof AbstractDecoratedTextEditor) {
@@ -115,11 +125,12 @@ public class BoxConstrainedEditorOverlay {
 			if (installedOn.containsKey(editor)) { // Don't install if already
 													// installed on
 				ekpl = installedOn.get(editor);
-				System.out.println("Already Installed!");
+				// System.out.println("Already Installed!");
 			} else {
 				ekpl = new BoxConstrainedEditorOverlay(editor);
-				installedOn.put(editor, ekpl);
-
+				if (ekpl != null) {
+					installedOn.put(editor, ekpl);
+				}
 			}
 			return ekpl;
 		}
@@ -131,6 +142,8 @@ public class BoxConstrainedEditorOverlay {
 	public BoxConstrainedEditorOverlay(IEditorPart editor) {
 		this.installMe(editor);
 
+		makeListeners();
+			
 		if (START_TURNED_ON) {
 			turnOn();
 		}
@@ -153,6 +166,7 @@ public class BoxConstrainedEditorOverlay {
 			IDocumentProvider dp = this.editor.getDocumentProvider();
 			this.doc = dp.getDocument(editor.getEditorInput());
 			ISelectionProvider sp = this.editor.getSelectionProvider();
+			// this crashes if not called in UI thread (when installing at startup on existing editors).
 			this.sel = (ITextSelection) sp.getSelection();
 			sp.addSelectionChangedListener(new selChanged(this));
 
@@ -171,6 +185,41 @@ public class BoxConstrainedEditorOverlay {
 
 	}
 
+	
+	private void makeListeners() {
+		this.boxPaint = new BoxPaintListener();
+		this.caretListener = new CaretPositionListener();
+		this.verifyKeyListener = new EditorOverlayVerifyKeyListener();
+		this.annotationModelListener = new BCEOAnnotationModelListener();
+	}
+	
+	
+	private void installListeners() {
+		styledText.addPaintListener(boxPaint);
+		styledText.addCaretListener(caretListener);
+		styledText.addVerifyKeyListener(verifyKeyListener);
+		annotationModel.addAnnotationModelListener(annotationModelListener);
+	}
+	
+	private void uninstallListeners() {
+		if (boxPaint != null) {
+			styledText.removePaintListener(boxPaint);
+		}
+		if (caretListener != null) {
+			styledText.removeCaretListener(caretListener);
+		}
+		if (verifyKeyListener != null) {
+			styledText.removeVerifyKeyListener(verifyKeyListener);
+		}
+		if (annotationModelListener != null) {
+			annotationModel
+					.removeAnnotationModelListener(annotationModelListener);
+		}
+	}
+	
+	
+	
+	
 	// This keeps the last selection around, but it is currently unused.
 	private class selChanged implements ISelectionChangedListener {
 
@@ -192,14 +241,14 @@ public class BoxConstrainedEditorOverlay {
 
 
 	public void turnOn() {
-		decorate();
 		turnedOn = true;
+		decorate();
 	}
 
 	
 	public void turnOff() {
-		undecorate();
 		turnedOn = false;
+		undecorate();
 	}
 
 	
@@ -219,36 +268,15 @@ public class BoxConstrainedEditorOverlay {
 	private void decorate() {
 		createBoxes();
 		if (hasBoxes()) {
-
-			// Add Listeners -
-			boxPaint = new BoxPaintListener();
-			styledText.addPaintListener(boxPaint);
-			caretListener = new CaretPositionListener();
-			styledText.addCaretListener(caretListener);
-			verifyKeyListener = new EditorOverlayVerifyKeyListener();
-			styledText.addVerifyKeyListener(verifyKeyListener);
-			annotationModelListener = new BCEOAnnotationModelListener();
-			annotationModel.addAnnotationModelListener(annotationModelListener);
+			installListeners();
 		}
 		drawBoxes();
 	}
 
+	
 	// stop listening when turned off
 	private void undecorate() {
-		// Stop listeners
-		if (boxPaint != null) {
-			styledText.removePaintListener(boxPaint);
-		}
-		if (caretListener != null) {
-			styledText.removeCaretListener(caretListener);
-		}
-		if (verifyKeyListener != null) {
-			styledText.removeVerifyKeyListener(verifyKeyListener);
-		}
-		if (annotationModelListener != null) {
-			annotationModel
-					.removeAnnotationModelListener(annotationModelListener);
-		}
+		uninstallListeners();
 		clearBackground();
 	}
 
@@ -470,7 +498,8 @@ public class BoxConstrainedEditorOverlay {
 	// numbers related to things we're drawing, not for use outside Draw!
 
 	private int oldEditorWidth = 0;
-
+	private int oldEditorHeight = 0;
+	
 	// draws boxes from boxList
 	public void drawBoxes() {
 		// big picture: create an image (newImage), edit with the gc, then set
@@ -492,6 +521,10 @@ public class BoxConstrainedEditorOverlay {
 		if (editorRectangle.width != oldEditorWidth) {
 			redraw = true;
 			oldEditorWidth = editorRectangle.width;
+		}
+		if (editorRectangle.height != oldEditorHeight) {
+			redraw = true;
+			oldEditorHeight = editorRectangle.height;
 		}
 
 		// collect all the drawing locations for all the boxes.

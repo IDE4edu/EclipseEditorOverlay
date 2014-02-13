@@ -3,6 +3,7 @@ package edu.berkeley.eduride.editoroverlay;
 import java.util.ArrayList;
 import java.util.Arrays;
 
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.IEditorReference;
 import org.eclipse.ui.IPartListener2;
@@ -15,31 +16,37 @@ public class BCEOEditorEventListener implements IPartListener2 {
 
 	
 	public BCEOEditorEventListener(boolean install) {
-		
+
 		String errStr;
 		// install listener for editor events
 		errStr = IPartListenerInstaller.installOnWorkbench(this, "BCEO");
 		if (errStr != null) {
 			System.err.println(errStr);
 		}
-		
+
 		// install on currently open editors
-		ArrayList<IEditorPart> eds = IPartListenerInstaller.getCurrentEditors();
-		for (IEditorPart ed : eds) {
-			installDance(ed);
+		// run this in the UI thread?
+		Display.getDefault().asyncExec(new Runnable() {
+
+			@Override
+			public void run() {
+				ArrayList<IEditorPart> eds = IPartListenerInstaller
+						.getCurrentEditors();
+				for (IEditorPart ed : eds) {
+					installDance(ed);
+				}
+			}
 		}
-		
-		//System.out.println("BCEOEditorEventListener - yo");
+
+		);
+
+		// System.out.println("BCEOEditorEventListener - yo");
 
 	}
 	
 	
 	private static void installDance(IWorkbenchPartReference partRef) {
-		IWorkbenchPart part = partRef.getPart(false);
-		IEditorPart editor = null;
-		if (part != null && part instanceof IEditorPart) {
-			editor = (IEditorPart) part.getAdapter(IEditorPart.class);
-		}
+		IEditorPart editor = getEditor(partRef);
 		if (editor != null) {
 			installDance(editor);
 		}
@@ -51,12 +58,29 @@ public class BCEOEditorEventListener implements IPartListener2 {
 	}
 	
 	
+	
+	private static IEditorPart getEditor(IWorkbenchPartReference partRef) {
+		IWorkbenchPart part = partRef.getPart(false);
+		IEditorPart editor = null;
+		if (part != null && part instanceof IEditorPart) {
+			editor = (IEditorPart) part.getAdapter(IEditorPart.class);
+		}
+		return editor;
+	}
+	
+	
+	private static void drawBoxesOnEditor(IEditorPart editor) {
+		BoxConstrainedEditorOverlay bceo = BoxConstrainedEditorOverlay.getBCEO(editor);
+		if (bceo != null) {
+			bceo.drawBoxes();
+		}
+	}
+	
 	////////////////////////
 	
 	@Override
 	public void partActivated(IWorkbenchPartReference partRef) {
-
-
+		//drawBoxesOnEditor(getEditor(partRef));
 	}
 
 	@Override
