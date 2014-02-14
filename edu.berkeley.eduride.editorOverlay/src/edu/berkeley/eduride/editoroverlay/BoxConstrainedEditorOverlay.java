@@ -112,7 +112,7 @@ public class BoxConstrainedEditorOverlay {
 
 	public static boolean shouldInstall(IFile file) {
 		// TODO check that it is a java file
-		return edu.berkeley.eduride.base_plugin.UIHelper.containedInISA(file);
+		return edu.berkeley.eduride.base_plugin.util.ProjectUtil.withinISAProject(file);
 	}
 
 	/*

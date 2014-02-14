@@ -104,6 +104,7 @@
       </specification>
    </extension>
    <extension
+         name="editor overlay"
          point="EduRideBasePlugin.startup">
       <startup
             class="edu.berkeley.eduride.editoroverlay.handlers.EdurideStartup">
