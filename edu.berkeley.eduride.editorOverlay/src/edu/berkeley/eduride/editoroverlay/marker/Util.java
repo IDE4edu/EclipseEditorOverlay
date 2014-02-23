@@ -19,6 +19,7 @@ import org.eclipse.jface.text.source.AnnotationModel;
 import org.eclipse.jface.text.source.IAnnotationModel;
 import org.eclipse.swt.graphics.Color;
 
+import edu.berkeley.eduride.base_plugin.util.Console;
 import edu.berkeley.eduride.editoroverlay.EditorOverlayActivator;
 
 /**
@@ -49,7 +50,7 @@ public class Util {
 			return true;
 		} catch (CoreException e) {
 			// whoopsee
-			System.err.println(e);
+			Console.err(e);
 			return false;
 		}
 	}
@@ -71,7 +72,7 @@ public class Util {
 			}
 			return true;
 		} catch (CoreException e) {
-			e.printStackTrace();
+			Console.err(e);
 			return false;
 		}
 	}
@@ -93,7 +94,7 @@ public class Util {
 			}
 			return true;
 		} catch (CoreException e) {
-			e.printStackTrace();
+			Console.err(e);
 			return false;
 		}
 	}
@@ -144,7 +145,7 @@ public class Util {
 					IResource.DEPTH_ZERO);
 			return new ArrayList<IMarker>(Arrays.asList(marks));
 		} catch (CoreException e) {
-			e.printStackTrace();
+			Console.err(e);;
 			return null;
 		}
 	}
@@ -184,7 +185,7 @@ public class Util {
 				}
 			}
 		} catch (CoreException e) {
-			e.printStackTrace();
+			Console.err(e);
 			return ret;
 		}
 
@@ -209,7 +210,7 @@ public class Util {
 			m.setAttribute(IMarker.USER_EDITABLE, true);
 			return true;
 		} catch (CoreException e) {
-			System.err.println(e);
+			Console.err(e);
 			return false;
 		}
 	}
@@ -268,7 +269,7 @@ public class Util {
 			mstop.setAttribute(IMarker.MESSAGE, id);
 			return true;
 		} catch (CoreException e) {
-			System.err.println(e);
+			Console.err(e);
 			return false;
 		}
 	}
@@ -283,23 +284,23 @@ public class Util {
 		ala = getMultilineMarkers(res);
 		for (IMarker[] ms : ala) {
 			try {
-				System.out.println("Multiline Marker "
+				Console.msg("Multiline Marker "
 						+ ms[0].getAttribute("id") + ": start loc=("
 						+ getLineNumber(ms[0]) + "); endloc=("
 						+ getLineNumber(ms[1]) + ")");
 			} catch (CoreException e) {
-				System.out.println("kabang");
+				Console.msg("kabang");
 			}
 		}
 		al = getInlineMarkers(res);
 		for (IMarker m : al) {
 			try {
-				System.out.println("InLine Marker " + m.getAttribute("id")
+				Console.msg("InLine Marker " + m.getAttribute("id")
 						+ ":  loc=(" + getLineNumber(m) + "); charstart=("
 						+ getCharStart(m) + "); charend=(" + getCharEnd(m)
 						+ ")");
 			} catch (CoreException e) {
-				System.out.println("kabang");
+				Console.msg("kabang");
 			}
 		}
 

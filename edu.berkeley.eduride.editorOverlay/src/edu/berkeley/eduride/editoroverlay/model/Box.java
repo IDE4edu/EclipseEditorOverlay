@@ -7,6 +7,7 @@ import org.eclipse.jface.text.source.IAnnotationModel;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.ui.texteditor.SimpleMarkerAnnotation;
 
+import edu.berkeley.eduride.base_plugin.util.Console;
 import edu.berkeley.eduride.editoroverlay.marker.Util;
 
 public class Box {
@@ -58,7 +59,7 @@ public class Box {
 		try {
 			((SimpleMarkerAnnotation)start).getMarker().delete();
 		} catch (CoreException e) {
-			System.out.println("whoops");
+			Console.err("Couldn't delete marker, uh oh: " + e.getMessage());
 		}
 		model.removeAnnotation(start);
 		

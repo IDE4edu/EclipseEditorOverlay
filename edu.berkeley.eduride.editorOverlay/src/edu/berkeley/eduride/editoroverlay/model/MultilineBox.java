@@ -8,6 +8,8 @@ import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.ui.texteditor.SimpleMarkerAnnotation;
 
+import edu.berkeley.eduride.base_plugin.util.Console;
+
 public class MultilineBox extends Box {
 	//start and stop are the line numbers corresponding to where user can type
 
@@ -97,7 +99,7 @@ public class MultilineBox extends Box {
 		try {
 			((SimpleMarkerAnnotation)stop).getMarker().delete();
 		} catch (CoreException e) {
-			System.out.println("whoops");
+			Console.err("Couldn't delete multiline-box marker, uh oh: " + e.getMessage());
 		}
 		model.removeAnnotation(stop);
 	}

@@ -10,6 +10,7 @@ import org.eclipse.ui.IPartListener2;
 import org.eclipse.ui.IWorkbenchPart;
 import org.eclipse.ui.IWorkbenchPartReference;
 
+import edu.berkeley.eduride.base_plugin.util.Console;
 import edu.berkeley.eduride.base_plugin.util.IPartListenerInstaller;
 
 public class BCEOEditorEventListener implements IPartListener2 {
@@ -21,7 +22,8 @@ public class BCEOEditorEventListener implements IPartListener2 {
 		// install listener for editor events
 		errStr = IPartListenerInstaller.installOnWorkbench(this, "BCEO");
 		if (errStr != null) {
-			System.err.println(errStr);
+			Console.err(errStr);
+			
 		}
 
 		// install on currently open editors
@@ -40,7 +42,7 @@ public class BCEOEditorEventListener implements IPartListener2 {
 
 		);
 
-		// System.out.println("BCEOEditorEventListener - yo");
+		//Console.msg("BCEOEditorEventListener - yo");
 
 	}
 	

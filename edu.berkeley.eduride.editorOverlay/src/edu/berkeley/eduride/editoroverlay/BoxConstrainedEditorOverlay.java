@@ -2,6 +2,8 @@ package edu.berkeley.eduride.editoroverlay;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IResource;
+import org.eclipse.jdt.core.IJavaElement;
+import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.internal.ui.javaeditor.CompilationUnitEditor;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.IRegion;
@@ -43,6 +45,8 @@ import org.eclipse.ui.texteditor.IDocumentProvider;
 import org.eclipse.ui.texteditor.ITextEditor;
 import org.eclipse.jface.text.Position;
 
+import edu.berkeley.eduride.base_plugin.isafile.ISAUtil;
+import edu.berkeley.eduride.base_plugin.util.Console;
 import edu.berkeley.eduride.editoroverlay.marker.Util;
 import edu.berkeley.eduride.editoroverlay.model.Box;
 import edu.berkeley.eduride.editoroverlay.model.InlineBox;
@@ -111,8 +115,17 @@ public class BoxConstrainedEditorOverlay {
 	}
 
 	public static boolean shouldInstall(IFile file) {
-		// TODO check that it is a java file
-		return edu.berkeley.eduride.base_plugin.util.ProjectUtil.withinISAProject(file);
+
+		boolean shouldInstall = true;
+		
+		// check that it is a java file -- we ignore .class files, why not
+		IJavaElement je = JavaCore.create(file);
+		shouldInstall &= (je != null && je.getElementType() == IJavaElement.COMPILATION_UNIT);
+		
+		// check that it lives in a ISAProject, why not...
+		shouldInstall &= ISAUtil.withinISAProject(file);
+		
+		return shouldInstall;
 	}
 
 	/*
@@ -125,7 +138,7 @@ public class BoxConstrainedEditorOverlay {
 			if (installedOn.containsKey(editor)) { // Don't install if already
 													// installed on
 				ekpl = installedOn.get(editor);
-				// System.out.println("Already Installed!");
+				//Console.msg("Already Installed!");
 			} else {
 				ekpl = new BoxConstrainedEditorOverlay(editor);
 				if (ekpl != null) {
@@ -140,51 +153,64 @@ public class BoxConstrainedEditorOverlay {
 	// ////////
 
 	public BoxConstrainedEditorOverlay(IEditorPart editor) {
-		this.installMe(editor);
+		boolean success = this.installMe(editor);
 
-		makeListeners();
+		if (success) {
+			makeListeners();
+				
+			if (START_TURNED_ON) {
+				turnOn();
+			}
 			
-		if (START_TURNED_ON) {
-			turnOn();
+			this.res = ResourceUtil.getResource(editor.getEditorInput());
 		}
-		
-		this.res = ResourceUtil.getResource(editor.getEditorInput());
 	}
 
 	// shouldInstall() and ensureInstalled() are *not* used here -- whatever
 	// calls this should use them to make sure.
 	// Currently, this is handled in ToggleBoxes.java.
-	private void installMe(IEditorPart editor) {
-		StyledText text = null;
-		if (editor != null) {
-			text = (StyledText) editor.getAdapter(Control.class);
-			this.styledText = text;
-
+	@SuppressWarnings("restriction")
+	private boolean installMe(IEditorPart editor) {
+		if (editor == null) {
+			return false; // failed
 		}
-		if (text != null) {
+		StyledText text = null;
+		text = (StyledText) editor.getAdapter(Control.class);
+		if (text == null) {
+			return false; // failed
+		}
+		this.styledText = text;
+		try {
 			this.editor = (ITextEditor) editor;
+			CompilationUnitEditor cuEditor = (CompilationUnitEditor) editor;
+			// above might throw ClassCastException for non-java files, yo
+			// which shouldn't happen with shouldInstall() above.
+			
 			IDocumentProvider dp = this.editor.getDocumentProvider();
 			this.doc = dp.getDocument(editor.getEditorInput());
 			ISelectionProvider sp = this.editor.getSelectionProvider();
-			// this crashes if not called in UI thread (when installing at startup on existing editors).
+			
+			// this crashes if not called in UI thread (when installing at startup
+			// on existing editors).
 			this.sel = (ITextSelection) sp.getSelection();
 			sp.addSelectionChangedListener(new selChanged(this));
 
-			srcViewer = ((CompilationUnitEditor) editor).getViewer();
+			srcViewer = cuEditor.getViewer();
 			annotationModel = srcViewer.getAnnotationModel();
-			txtViewerExt = (ITextViewerExtension5) srcViewer; // we can use this
-																// to get line
-																// numbers w/
-																// folding
-
-		} else {
-			System.out.println("loggerInstall "
-					+ "EditorVerifyKeyListener failed to installed in "
-					+ editor.getTitle());
+			// we can use this to get line numbers with folding
+			txtViewerExt = (ITextViewerExtension5) srcViewer;
+		} catch (ClassCastException e) {
+			return false;  // not looking at a java file, yo
+		} catch (Exception e) {
+			Console.err("Some strange exception in BCEO install... hm...");
+			Console.err(e);
+			return false;
 		}
-
+		
+		return true;
 	}
 
+	
 	
 	private void makeListeners() {
 		this.boxPaint = new BoxPaintListener();
@@ -303,8 +329,7 @@ public class BoxConstrainedEditorOverlay {
 
 		@Override
 		public void verifyKey(VerifyEvent event) {
-			// System.out.println("verifyKey called: " + event.character +
-			// ", int: " + keyCode);
+			//Console.msg("verifyKey called: " + event.character);
 
 			if (!turnedOn) {
 				// allow it, begrudgingly.
@@ -425,7 +450,7 @@ public class BoxConstrainedEditorOverlay {
 
 		@Override
 		public void modelChanged(AnnotationModelEvent event) {
-			// System.err.println ("Hello.  Got a annotation model change!");
+			// Console.msg ("Hello.  Got a annotation model change!");
 
 			if (event.isValid() && !event.isEmpty()) {
 				boolean uhOh = false;
@@ -445,7 +470,7 @@ public class BoxConstrainedEditorOverlay {
 
 		@Override
 		public void modelChanged(IAnnotationModel model) {
-			// System.err.println("I don't care about this model Changed event");
+			// Console.msg("I don't care about this model Changed event");
 			// this is around just so we can add this listener, sigh
 		}
 
