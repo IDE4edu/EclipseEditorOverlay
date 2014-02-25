@@ -22,8 +22,7 @@ public class BCEOEditorEventListener implements IPartListener2 {
 		// install listener for editor events
 		errStr = IPartListenerInstaller.installOnWorkbench(this, "BCEO");
 		if (errStr != null) {
-			Console.err(errStr);
-			
+			Console.err("BCEO install fail: " + errStr);
 		}
 
 		// install on currently open editors
