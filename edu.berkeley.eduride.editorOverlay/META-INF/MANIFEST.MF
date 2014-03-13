@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: EditorOverlay
 Bundle-SymbolicName: edu.berkeley.eduride.editorOverlay;singleton:=true
-Bundle-Version: 1.0.3
+Bundle-Version: 1.0.3.qualifier
 Bundle-Activator: edu.berkeley.eduride.editoroverlay.EditorOverlayActivator
 Bundle-Vendor: eduride
 Require-Bundle: org.eclipse.core.runtime,
