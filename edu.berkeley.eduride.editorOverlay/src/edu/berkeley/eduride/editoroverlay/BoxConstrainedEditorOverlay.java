@@ -295,8 +295,11 @@ public class BoxConstrainedEditorOverlay {
 		createBoxes();
 		if (hasBoxes()) {
 			installListeners();
+			drawBoxes();        //moved inside of if statement
+		} else {
+			turnedOn = false;  //no boxes, don't install listeners or turn on
+			clearBackground();
 		}
-		drawBoxes();
 	}
 
 	
