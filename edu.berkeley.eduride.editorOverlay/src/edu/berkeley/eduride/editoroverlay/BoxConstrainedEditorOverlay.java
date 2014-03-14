@@ -267,6 +267,7 @@ public class BoxConstrainedEditorOverlay {
 
 
 	public void turnOn() {
+		validateAnnotations(annotationModel);
 		turnedOn = true;
 		decorate();
 	}
@@ -403,6 +404,9 @@ public class BoxConstrainedEditorOverlay {
 				int bStopOffset, char character) {
 			boolean allowed = true;
 
+			// the annotation for a multiline box is *within* the box.  As such, we can't 
+			// allow key events at the first position of the box, because the annotation will get mucked.
+			// TODO lets fix this, and move the annotation outside of the box.
 			if (character == SWT.BS) {
 				// backspace key
 				if (offset == (bStartOffset + 1)) {
@@ -436,7 +440,7 @@ public class BoxConstrainedEditorOverlay {
 
 			} else if (character == SWT.DEL) {
 				// delete key
-				if (offset == (bStopOffset - 1)) {
+				if (offset == (bStopOffset - 2)) {
 					// end of the box, you can't delete that!
 					allowed = false;
 				}
@@ -448,9 +452,25 @@ public class BoxConstrainedEditorOverlay {
 
 	}
 
+	
+	
+	
+	
+	///////////////////
+	//  annotations
+	
+	
 	public class BCEOAnnotationModelListener implements
 			IAnnotationModelListener, IAnnotationModelListenerExtension {
 
+		//if the boxes are 'turned on', we shouldn't ever get removed events.
+		//  ha.  maybe assume it could happen, why not...
+		//  but, we will get moved events for the endAnnotation of a multiline
+		//if boxes are turned off, we'll get removes and adds and changes
+		// the document.  We should set a dirty bit of some sort so that
+		// validateAnnotations() can do everything at once, I think.
+		
+		
 		@Override
 		public void modelChanged(AnnotationModelEvent event) {
 			// Console.msg ("Hello.  Got a annotation model change!");
@@ -479,6 +499,22 @@ public class BoxConstrainedEditorOverlay {
 
 	}
 
+	
+	
+	
+	
+	
+	// This is called before boxes are 'turned on', because the annotations might
+	// have gotten mucked up:
+	//  - one of the multiline annotations was deleted...
+	//  - multiline annotations might not be at the start of a line, put them there
+	public static void validateAnnotations(IAnnotationModel annotationModel) {
+		//TODO
+	}
+	
+	
+	
+	
 	// /////////////////////////
 
 	// Make multilineBoxes and inlineBpoxes based on annotations in editor
