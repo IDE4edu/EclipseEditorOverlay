@@ -710,9 +710,12 @@ public class BoxConstrainedEditorOverlay {
 				if (b.x != -1) {
 					// its visible (not folded up)
 					gc.setForeground(b.color);
-					gc.drawRectangle(b.x, b.y, b.width, lineHeight);
+					if (b.width == 0) {
+						gc.drawRectangle(b.x - 2, b.y, b.width + 5, lineHeight);
+					} else {
+						gc.drawRectangle(b.x, b.y, b.width, lineHeight);
+					}
 				}
-
 			}
 
 			if (!somethingIsFolded) { // Don't go through big slow ifs/loops
