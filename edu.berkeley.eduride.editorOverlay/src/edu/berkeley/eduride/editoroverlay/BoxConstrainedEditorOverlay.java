@@ -560,6 +560,7 @@ public class BoxConstrainedEditorOverlay {
 		// TODO hack to fix something or other in authoring. we should remediate
 		if (!hasBoxes()) {
 			clearBackground();
+			turnOff();
 		}
 	}
 
