@@ -34,6 +34,7 @@ import org.eclipse.swt.graphics.RGB;
 import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.widgets.ColorDialog;
 import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.IEditorInput;
@@ -47,6 +48,7 @@ import org.eclipse.jface.text.Position;
 
 import edu.berkeley.eduride.base_plugin.isafile.ISAUtil;
 import edu.berkeley.eduride.base_plugin.util.Console;
+import edu.berkeley.eduride.base_plugin.util.IPartListenerInstaller;
 import edu.berkeley.eduride.editoroverlay.marker.Util;
 import edu.berkeley.eduride.editoroverlay.model.Box;
 import edu.berkeley.eduride.editoroverlay.model.InlineBox;
@@ -360,9 +362,9 @@ public class BoxConstrainedEditorOverlay {
 				int bStartOffset = b.getStartStyledTextOffset();
 				int bStopOffset = b.getStopStyledTextOffset();
 
-				if (keyEventInBox(widgetOffset, bStartOffset, bStopOffset)) {
+				if (keyEventInBox(widgetOffset, bStartOffset - 1, bStopOffset)) {
 					event.doit = allowKeyEventInBox(widgetOffset, b,
-							bStartOffset, bStopOffset, character);
+							bStartOffset - 1, bStopOffset, character);
 					return;
 				}
 			}
@@ -421,6 +423,12 @@ public class BoxConstrainedEditorOverlay {
 					// end of the box, you can't delete that!
 					allowed = false;
 				}
+				//TODO: Fix this hack!
+				//Don't allow "enter" on first character...  it moves the annotation down a line
+				//and then causes super bad box deleting issues if user Ctrl+Z after moving annotation
+				//No idea what causes the deletion problem
+			} else if (offset == (bStartOffset + 1) && (character == SWT.CR || character == SWT.LF)) {
+				allowed = false;
 			}
 			return allowed;
 		}
@@ -470,10 +478,12 @@ public class BoxConstrainedEditorOverlay {
 		// the document.  We should set a dirty bit of some sort so that
 		// validateAnnotations() can do everything at once, I think.
 		
-		
+
 		@Override
 		public void modelChanged(AnnotationModelEvent event) {
-			// Console.msg ("Hello.  Got a annotation model change!");
+			//Console.msg ("Hello.  Got a annotation model change!");
+			
+			//Util.fixMultiLine(annotationModel, styledText);
 
 			if (event.isValid() && !event.isEmpty()) {
 				boolean uhOh = false;
@@ -522,6 +532,8 @@ public class BoxConstrainedEditorOverlay {
 	private void createBoxes() {
 		// ISourceViewer viewer = ((CompilationUnitEditor)editor).getViewer();
 		// IAnnotationModel annotationModel = viewer.getAnnotationModel();
+		
+		Util.fixMultiLine(annotationModel, styledText);
 
 		// MULTILINE
 		List<Annotation[]> multiline = Util
@@ -774,11 +786,19 @@ public class BoxConstrainedEditorOverlay {
 	}
 
 	private void clearBackground() {
-		Image oldImage = styledText.getBackgroundImage();
-		styledText.setBackgroundImage(null);
-		if (oldImage != null)
-			oldImage.dispose();
-		styledText.setBackgroundImage(null);
+		Display.getDefault().asyncExec(new Runnable() {
+
+			@Override
+			public void run() {
+				Image oldImage = styledText.getBackgroundImage();
+				styledText.setBackgroundImage(null);
+				if (oldImage != null)
+					oldImage.dispose();
+				styledText.setBackgroundImage(null);
+			}
+		}
+
+		);
 	}
 
 	// ////////////////////
@@ -861,7 +881,7 @@ public class BoxConstrainedEditorOverlay {
 			return;
 		}
 
-		startLine += 1;
+		//startLine += 1;
 		stopLine += 2;
 
 		MessageBox dialog = new MessageBox(shell, SWT.ICON_QUESTION | SWT.YES
@@ -873,11 +893,11 @@ public class BoxConstrainedEditorOverlay {
 		if (returnCode == SWT.NO) {// get color, cram it into annotation's text,
 									// read it back later
 			Color c = promptColor(shell);
-			Util.createMultiLine(res, startLine, stopLine, "mbox" + startLine
+			Util.createMultiLine(res, styledText.getOffsetAtLine(startLine) - 1, stopLine, "mbox" + startLine
 					+ stopLine + Util.colorToString(c));
 		}
 		if (returnCode == SWT.YES) {
-			Util.createMultiLine(res, startLine, stopLine, "mbox" + startLine
+			Util.createMultiLine(res, styledText.getOffsetAtLine(startLine) - 1, stopLine, "mbox" + startLine
 					+ stopLine);
 		}
 	}

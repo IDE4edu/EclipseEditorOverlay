@@ -30,7 +30,14 @@ public class MultilineBox extends Box {
 	
 	
 	// styled text position -- need to override Stop position 
+	public int getStartStyledTextOffset() {
+		Position pos = getStyledTextPosition();
+		return (getStartStyledTextOffset(pos));
+	}
 
+	public int getStartStyledTextOffset(Position pos) {
+		return pos.getOffset() + 1;
+	}
 
 	
 	@Override
@@ -86,7 +93,7 @@ public class MultilineBox extends Box {
 	
 	//get start line number.  Pass in boxText if you're in EditorVerifyKeyListener.
 	int startLine(StyledText st) {
-		return st.getLineAtOffset(getStartStyledTextOffset());
+		return st.getLineAtOffset(getStartStyledTextOffset()) + 1;
 	}
 	
 	//get ending line number.  Pass in boxText if you're in EditorVerifyKeyListener.

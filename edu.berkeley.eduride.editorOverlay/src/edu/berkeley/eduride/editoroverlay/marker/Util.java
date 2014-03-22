@@ -17,7 +17,9 @@ import org.eclipse.jface.text.Position;
 import org.eclipse.jface.text.source.Annotation;
 import org.eclipse.jface.text.source.AnnotationModel;
 import org.eclipse.jface.text.source.IAnnotationModel;
+import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.graphics.Color;
+import org.eclipse.swt.widgets.Display;
 
 import edu.berkeley.eduride.base_plugin.util.Console;
 import edu.berkeley.eduride.editoroverlay.EditorOverlayActivator;
@@ -251,14 +253,16 @@ public class Util {
 	}
 
 
-	public static boolean createMultiLine(IResource resource, int lineStart,
+	public static boolean createMultiLine(IResource resource, int startPos,
 			int lineStop, String id) {
 		try {
 			IMarker mstart = resource.createMarker(START_MARKERID);
 			IMarker mstop = resource.createMarker(STOP_MARKERID);
 			deleteMultilineMarkersWithId(resource, id); // delete old ones once we've made these
 
-			mstart.setAttribute(IMarker.LINE_NUMBER, lineStart);
+			//mstart.setAttribute(IMarker.LINE_NUMBER, lineStart);
+			mstart.setAttribute(IMarker.CHAR_START, startPos);
+			mstart.setAttribute(IMarker.CHAR_END, startPos + 1);
 			//  should we make the length of the start marker to the stop marker?"
 			mstop.setAttribute(IMarker.LINE_NUMBER, lineStop);
 			mstart.setAttribute("id", id);
@@ -271,6 +275,49 @@ public class Util {
 		} catch (CoreException e) {
 			Console.err(e);
 			return false;
+		}
+	}
+	
+	///////////////////
+	
+	//Move stop annotations to the start of the line, move start annotations to the end
+	public static void fixMultiLine(IAnnotationModel annotationModel, StyledText st) {
+		
+		Display.getDefault().asyncExec(new FixMultilineTask(annotationModel, st));
+		
+	}
+	
+	private static class FixMultilineTask implements Runnable {
+		private IAnnotationModel annotationModel;
+		private StyledText st;
+
+		public FixMultilineTask(IAnnotationModel annotationModel, StyledText styledText) {
+			this.annotationModel = annotationModel;
+			st = styledText;
+		}
+
+		public void run() {
+
+			Iterator<Annotation> it = annotationModel.getAnnotationIterator();
+			while (it.hasNext()) {
+				Annotation annotation = it.next();
+				if (!(annotation.isMarkedDeleted())) {
+					if (annotation.getType().equals(STOP_ANNOTATIONID)) {
+						int offset = (annotationModel.getPosition(annotation).getOffset());  //get old offset
+						int newOff = st.getOffsetAtLine(st.getLineAtOffset(offset));  //push back to start of line
+						if (offset != newOff) {
+							(annotationModel.getPosition(annotation)).setOffset(newOff);  //change position
+							//((AnnotationModel)annotationModel).modifyAnnotationPosition(annotation, new Position(newOff));
+						}
+					} else if (annotation.getType().equals(START_ANNOTATIONID)) {
+						int offset = (annotationModel.getPosition(annotation).getOffset());  //get old offset
+						int newOff = st.getOffsetAtLine(st.getLineAtOffset(offset) + 1) - 1;  //push back to start of line
+						if (offset != newOff) {
+							(annotationModel.getPosition(annotation)).setOffset(newOff);  //change position
+						}
+					}
+				}
+			}
 		}
 	}
 
