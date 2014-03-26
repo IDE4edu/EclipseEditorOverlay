@@ -110,5 +110,22 @@
             class="edu.berkeley.eduride.editoroverlay.handlers.EdurideStartup">
       </startup>
    </extension>
+   <extension
+         point="org.eclipse.ui.handlers">
+      <handler
+            class="edu.berkeley.eduride.editoroverlay.handlers.PasteHandler"
+            commandId="org.eclipse.ui.edit.paste">
+         <activeWhen>
+            <and>
+               <with
+                     variable="activePartID">
+                  <equals
+                        value="org.eclipse.jdt.ui.CompilationUnitEditor">
+                  </equals>
+               </with>
+            </and>
+         </activeWhen>
+      </handler>
+   </extension>
 
 </plugin>
