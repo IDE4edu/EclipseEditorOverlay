@@ -563,7 +563,8 @@ public class BoxConstrainedEditorOverlay {
 			inlineBoxes.add(ib);
 		}
 
-		// TODO hack to fix something or other in authoring. we should remediate
+		// TODO hack to fix something or other in authoring. we should remediate, because sometimes
+		//  this gets an invalid thread access (when called via an annotation update, outside of UI thread).
 		if (!hasBoxes()) {
 			clearBackground();
 			turnOff();
