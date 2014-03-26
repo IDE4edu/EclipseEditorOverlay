@@ -341,6 +341,12 @@ public class BoxConstrainedEditorOverlay {
 				// allow it, begrudgingly.
 				return;
 			}
+			
+			//Sometimes something else cancels the event, so don't override it!
+			//ex: "(" tries to rewrite to "()", so it cancels the actual "(" keypress.  If we turn doit true, we get "(()"
+			if (event.doit == false) {
+				return;
+			}
 
 			// int keyCode = event.keyCode;
 			char character = event.character;
