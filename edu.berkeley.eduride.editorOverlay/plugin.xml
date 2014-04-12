@@ -117,12 +117,8 @@
             commandId="org.eclipse.ui.edit.paste">
          <activeWhen>
             <and>
-               <with
-                     variable="activePartID">
-                  <equals
-                        value="org.eclipse.jdt.ui.CompilationUnitEditor">
-                  </equals>
-               </with>
+               
+               
             </and>
          </activeWhen>
       </handler>

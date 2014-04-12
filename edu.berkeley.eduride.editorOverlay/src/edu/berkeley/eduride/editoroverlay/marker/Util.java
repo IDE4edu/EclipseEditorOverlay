@@ -6,9 +6,15 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 
+import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IResource;
+import org.eclipse.core.resources.IWorkspace;
+import org.eclipse.core.resources.IWorkspaceRoot;
+import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.Path;
 import org.eclipse.jdt.core.IAnnotatable;
 import org.eclipse.jdt.core.IAnnotation;
 import org.eclipse.jdt.core.JavaModelException;
@@ -375,6 +381,97 @@ public class Util {
 			return new Color(null, 200, 120, 255);
 		}
 	}
+	
+	
+	///////////////  Cram annotations into XML, and unpack later
+	
+	public static void exportMarkers (IResource res) {
+		Console.msg(generateXML(res));
+	}
+	
+	public static String generateXML (IResource res) {
+		
+		//general info
+		String xml = "<annotationinfo>\n";
+		String path = (res.getLocation()).toPortableString();  //should return OS independent path?
+		//String path = (res.getLocationURI()).toString();  //URI version
+		xml += "\t<file>" + path + "</file>\n";
+		
+		//inline markers
+		List<IMarker> inline = getInlineMarkers(res);
+		for (IMarker ann : inline) {
+			String tempXML = "\t<inlinePB>";
+			try {
+				tempXML += ann.getAttribute(IMarker.MESSAGE) + " ";
+				tempXML += ann.getAttribute(IMarker.CHAR_START) + " ";
+				tempXML += ann.getAttribute(IMarker.CHAR_END) + "</inlinePB>\n";
+				
+				xml += tempXML;
+			} catch (Exception e) {
+				System.out.println("problem generating xml");
+			}
+		}
+		
+		//multiline markers
+		List<IMarker[]> multiline = getMultilineMarkers(res);
+		for (IMarker[] ann : multiline) {
+			String tempXML = "\t<multilinePB>";  //try/catch required...  make sure we can build full string before adding it in
+			try {
+				tempXML += ann[0].getAttribute(IMarker.MESSAGE) + " ";
+				tempXML += ann[0].getAttribute(IMarker.CHAR_START) + " ";
+				tempXML += ann[1].getAttribute(IMarker.LINE_NUMBER) + "</multilinePB>\n";
+				
+				xml += tempXML;
+			} catch (CoreException e) {
+				System.out.println("something broke while generating xml");
+			}
+		}
+		
+		xml += "\t<base64>I HAVE NO IDEA WHAT I'M DOING</base64>\n";
+		
+		xml += "</annotationinfo>\n";
+		return xml;
+	}
+
 
 	
+	
+	//Take a path (as a string) and turn it back into a resource
+	public static IResource getResFromPath(String path) {
+		//http://www.eclipsezone.com/eclipse/forums/m92221730.html
+		IPath location = new Path(path);
+		IWorkspace workspace = ResourcesPlugin.getWorkspace(); 
+		IFile file = workspace.getRoot().getFileForLocation(location); 
+		return file;
+	}
+	
+	//expected: id start stop
+	//do NOT include <inlinePB> tags!
+	//to get a resource from a filepath, use getResFromPath(String path)
+	public static void importInlineXML (String xml, IResource res) {
+		try {
+			xml = xml.trim();
+			String[] pieces = xml.split(" ");
+			int start = Integer.parseInt(pieces[1]);
+			int stop = Integer.parseInt(pieces[2]);
+			createInlineMarker(res, start, stop, pieces[0]);
+		} catch (Exception e) {
+			System.out.println("Could not parse: " + xml);
+		}
+	}
+	
+	//expected: id start stop
+	//do NOT include <inlinePB> tags!
+	//to get a resource from a filepath, use getResFromPath(String path)
+	public static void importMultilineXML (String xml, IResource res) {
+		try {
+			xml = xml.trim();
+			String[] pieces = xml.split(" ");
+			int startPos = Integer.parseInt(pieces[1]);
+			int stopLine = Integer.parseInt(pieces[2]);
+			createMultiLine(res, startPos, stopLine, pieces[0]);
+		} catch (Exception e) {
+			System.out.println("Could not parse: " + xml);
+		}
+	}
 }

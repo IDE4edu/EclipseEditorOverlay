@@ -10,7 +10,6 @@ public class PasteHandler implements IHandler {
 	@Override
 	public void addHandlerListener(IHandlerListener handlerListener) {
 		// TODO Auto-generated method stub
-
 	}
 
 	@Override

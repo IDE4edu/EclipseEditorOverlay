@@ -39,6 +39,7 @@ import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IEditorPart;
+import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.ide.ResourceUtil;
 import org.eclipse.ui.part.FileEditorInput;
 import org.eclipse.ui.texteditor.AbstractDecoratedTextEditor;
@@ -994,6 +995,18 @@ public class BoxConstrainedEditorOverlay {
 			dialog.setMessage("Error: Please click inside the box you're removing before clicking \"Delete\".");
 			int returnCode = dialog.open();
 		}
+	}
+	
+	//So, Util methods can't be called from authoring plugin without exporting util...  so this is a portal for that
+	public static void exportMarkers(IResource res) {
+		Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell();
+		
+		MessageBox dialog = new MessageBox(shell, SWT.ICON_INFORMATION | SWT.OK);
+		dialog.setText("Export XML generated");
+		dialog.setMessage("NOTE: Please save this file before generating XML code.\n\nCopy the XML code from the console into the ISA file. You must re-export if you edit this file.");
+		int returnCode = dialog.open();
+		
+		Util.exportMarkers(res);
 	}
 
 }
