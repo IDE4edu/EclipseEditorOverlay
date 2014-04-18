@@ -395,9 +395,6 @@ public class Util {
 		
 		//general info
 		String xml = "\t<BCEO>\n";
-		//String path = (res.getLocation()).toPortableString();  //should return OS independent path?
-		//String path = (res.getLocationURI()).toString();  //URI version
-		//xml += "\t<file>" + path + "</file>\n";
 		
 		//inline markers
 		List<IMarker> inline = getInlineMarkers(res);
