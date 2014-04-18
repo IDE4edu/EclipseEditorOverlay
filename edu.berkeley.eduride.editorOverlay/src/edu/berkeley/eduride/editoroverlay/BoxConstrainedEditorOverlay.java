@@ -998,15 +998,8 @@ public class BoxConstrainedEditorOverlay {
 	}
 	
 	//So, Util methods can't be called from authoring plugin without exporting util...  so this is a portal for that
-	public static void exportMarkers(IResource res) {
-		Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell();
-		
-		MessageBox dialog = new MessageBox(shell, SWT.ICON_INFORMATION | SWT.OK);
-		dialog.setText("Export XML generated");
-		dialog.setMessage("NOTE: Please save this file before generating XML code.\n\nCopy the XML code from the console into the ISA file. You must re-export if you edit this file.");
-		int returnCode = dialog.open();
-		
-		Util.exportMarkers(res);
+	public static String exportMarkers(IResource res) {
+		return Util.generateMarkerXML(res);
 	}
 
 }

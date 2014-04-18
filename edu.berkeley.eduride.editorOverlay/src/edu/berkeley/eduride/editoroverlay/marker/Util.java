@@ -390,23 +390,19 @@ public class Util {
 	
 	
 	///////////////  Cram annotations into XML, and unpack later
-	
-	public static void exportMarkers (IResource res) {
-		Console.msg(generateXML(res));
-	}
-	
-	public static String generateXML (IResource res) {
+
+	public static String generateMarkerXML (IResource res) {
 		
 		//general info
-		String xml = "<annotationinfo>\n";
-		String path = (res.getLocation()).toPortableString();  //should return OS independent path?
+		String xml = "\t<BCEO>\n";
+		//String path = (res.getLocation()).toPortableString();  //should return OS independent path?
 		//String path = (res.getLocationURI()).toString();  //URI version
-		xml += "\t<file>" + path + "</file>\n";
+		//xml += "\t<file>" + path + "</file>\n";
 		
 		//inline markers
 		List<IMarker> inline = getInlineMarkers(res);
 		for (IMarker ann : inline) {
-			String tempXML = "\t<inlinePB>";
+			String tempXML = "\t\t<inlinePB>";
 			try {
 				tempXML += ann.getAttribute(IMarker.MESSAGE) + " ";
 				tempXML += ann.getAttribute(IMarker.CHAR_START) + " ";
@@ -421,7 +417,7 @@ public class Util {
 		//multiline markers
 		List<IMarker[]> multiline = getMultilineMarkers(res);
 		for (IMarker[] ann : multiline) {
-			String tempXML = "\t<multilinePB>";  //try/catch required...  make sure we can build full string before adding it in
+			String tempXML = "\t\t<multilinePB>";  //try/catch required...  make sure we can build full string before adding it in
 			try {
 				tempXML += ann[0].getAttribute(IMarker.MESSAGE) + " ";
 				tempXML += ann[0].getAttribute(IMarker.CHAR_START) + " ";
@@ -433,74 +429,20 @@ public class Util {
 			}
 		}
 		
-		String base64 = stringToBase64(getContents((IFile)res));
-		xml += "\t<base64>" + base64 + "</base64>\n";
-		
-		System.out.println(base64ToString(base64));
-		//System.out.println(base64.length());  Can we make the base64 xml prettier?  add newlines + tabs, maybe?
-		
-		xml += "</annotationinfo>\n";
+		xml += "\t</BCEO>\n";
 		return xml;
 	}
-	
-	
-	/** Get contents of an Eclipse resource file as string. */
-	public static String getContents(IFile file) {
-		try {
-			InputStream input = file.getContents();
-			
-			StringBuffer buffer = new StringBuffer();
-			BufferedReader reader = new BufferedReader(new InputStreamReader(input));
-			String line;
-			while ((line = reader.readLine()) != null) {
-				buffer.append(line);
-				buffer.append('\n');
-			}
-			
-			String contents = buffer.toString();
-			input.close();
-			return contents;
-		} catch (Exception e) {
-			System.out.println("Problem reading file contents.");
-			return null;
-		}
-	}
-
-	
-	//input: some string of text
-	//output: a string representing the base64 encoding
-	public static String stringToBase64(String data) {
-		return DatatypeConverter.printBase64Binary(data.getBytes());
-	}
-	
-	
-	//input: A string of base64 encoded data.  Do NOT include the <base64> tags!
-	//output: A string represented the decoded base64
-	//extra whitespace/newlines in the xml should be ignored
-	public static String base64ToString(String base64) {
-		
-		base64 = base64.replaceAll("\\s+","");  //maybe?
-		
-		byte[] undo = DatatypeConverter.parseBase64Binary(base64);
-        try {
-            return new String(undo, "UTF-8");
-        } catch (Exception e) {
-            System.out.println("Error parsing base64");
-            return null;
-        }
-	}
-
-
-	
 	
 	//Take a path (as a string) and turn it back into a resource
 	public static IResource getResFromPath(String path) {
 		//http://www.eclipsezone.com/eclipse/forums/m92221730.html
 		IPath location = new Path(path);
 		IWorkspace workspace = ResourcesPlugin.getWorkspace(); 
-		IFile file = workspace.getRoot().getFileForLocation(location); 
+		//IFile file = workspace.getRoot().getFileForLocation(location); 
+		IFile file = ResourcesPlugin.getWorkspace().getRoot().getFile(location);
 		return file;
 	}
+	
 	
 	//expected: id start stop
 	//do NOT include <inlinePB> tags!
