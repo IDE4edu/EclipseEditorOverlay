@@ -1,33 +1,20 @@
 package edu.berkeley.eduride.editoroverlay.marker;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-
-import javax.xml.bind.DatatypeConverter;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IWorkspace;
-import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.Path;
-import org.eclipse.jdt.core.IAnnotatable;
-import org.eclipse.jdt.core.IAnnotation;
-import org.eclipse.jdt.core.JavaModelException;
-import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.Position;
 import org.eclipse.jface.text.source.Annotation;
-import org.eclipse.jface.text.source.AnnotationModel;
 import org.eclipse.jface.text.source.IAnnotationModel;
 import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.graphics.Color;
@@ -275,6 +262,7 @@ public class Util {
 			//mstart.setAttribute(IMarker.LINE_NUMBER, lineStart);
 			mstart.setAttribute(IMarker.CHAR_START, startPos);
 			mstart.setAttribute(IMarker.CHAR_END, startPos + 1);
+			
 			//  should we make the length of the start marker to the stop marker?"
 			mstop.setAttribute(IMarker.LINE_NUMBER, lineStop);
 			mstart.setAttribute("id", id);
@@ -393,17 +381,18 @@ public class Util {
 
 	public static String generateMarkerXML (IResource res) {
 		
-		//general info
-		String xml = "\t<BCEO>\n";
+		String xml = "";
 		
 		//inline markers
 		List<IMarker> inline = getInlineMarkers(res);
 		for (IMarker ann : inline) {
-			String tempXML = "\t\t<inlinePB>";
 			try {
-				tempXML += ann.getAttribute(IMarker.MESSAGE) + " ";
-				tempXML += ann.getAttribute(IMarker.CHAR_START) + " ";
-				tempXML += ann.getAttribute(IMarker.CHAR_END) + "</inlinePB>\n";
+				String tempXML = "\t<box>\n";
+				tempXML += "\t\t<type>inline</type>\n";
+				tempXML += "\t\t<name>" + ann.getAttribute(IMarker.MESSAGE) + "</name>\n";
+				tempXML += "\t\t<start>" + ann.getAttribute(IMarker.CHAR_START) + "</start>\n";
+				tempXML += "\t\t<stop>" + ann.getAttribute(IMarker.CHAR_END) + "</stop>\n";
+				tempXML += "\t</box>\n";
 				
 				xml += tempXML;
 			} catch (Exception e) {
@@ -414,11 +403,13 @@ public class Util {
 		//multiline markers
 		List<IMarker[]> multiline = getMultilineMarkers(res);
 		for (IMarker[] ann : multiline) {
-			String tempXML = "\t\t<multilinePB>";  //try/catch required...  make sure we can build full string before adding it in
 			try {
-				tempXML += ann[0].getAttribute(IMarker.MESSAGE) + " ";
-				tempXML += ann[0].getAttribute(IMarker.CHAR_START) + " ";
-				tempXML += ann[1].getAttribute(IMarker.LINE_NUMBER) + "</multilinePB>\n";
+				String tempXML = "\t<box>\n";
+				tempXML += "\t\t<type>multiline</type>\n";
+				tempXML += "\t\t<name>" + ann[0].getAttribute(IMarker.MESSAGE) + "</name>\n";
+				tempXML += "\t\t<start>" + ann[0].getAttribute(IMarker.CHAR_START) + "</start>\n";
+				tempXML += "\t\t<stop>" + ann[1].getAttribute(IMarker.LINE_NUMBER) + "</stop>\n";
+				tempXML += "\t</box>\n";
 				
 				xml += tempXML;
 			} catch (CoreException e) {
@@ -426,48 +417,6 @@ public class Util {
 			}
 		}
 		
-		xml += "\t</BCEO>\n";
 		return xml;
-	}
-	
-	//Take a path (as a string) and turn it back into a resource
-	public static IResource getResFromPath(String path) {
-		//http://www.eclipsezone.com/eclipse/forums/m92221730.html
-		IPath location = new Path(path);
-		IWorkspace workspace = ResourcesPlugin.getWorkspace(); 
-		//IFile file = workspace.getRoot().getFileForLocation(location); 
-		IFile file = ResourcesPlugin.getWorkspace().getRoot().getFile(location);
-		return file;
-	}
-	
-	
-	//expected: id start stop
-	//do NOT include <inlinePB> tags!
-	//to get a resource from a filepath, use getResFromPath(String path)
-	public static void importInlineXML (String xml, IResource res) {
-		try {
-			xml = xml.trim();
-			String[] pieces = xml.split(" ");
-			int start = Integer.parseInt(pieces[1]);
-			int stop = Integer.parseInt(pieces[2]);
-			createInlineMarker(res, start, stop, pieces[0]);
-		} catch (Exception e) {
-			System.out.println("Could not parse: " + xml);
-		}
-	}
-	
-	//expected: id start stop
-	//do NOT include <inlinePB> tags!
-	//to get a resource from a filepath, use getResFromPath(String path)
-	public static void importMultilineXML (String xml, IResource res) {
-		try {
-			xml = xml.trim();
-			String[] pieces = xml.split(" ");
-			int startPos = Integer.parseInt(pieces[1]);
-			int stopLine = Integer.parseInt(pieces[2]);
-			createMultiLine(res, startPos, stopLine, pieces[0]);
-		} catch (Exception e) {
-			System.out.println("Could not parse: " + xml);
-		}
 	}
 }

@@ -2,16 +2,23 @@ package edu.berkeley.eduride.editoroverlay;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
+import org.eclipse.core.resources.IMarker;
+import org.eclipse.core.resources.IResource;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.IEditorReference;
 import org.eclipse.ui.IPartListener2;
 import org.eclipse.ui.IWorkbenchPart;
 import org.eclipse.ui.IWorkbenchPartReference;
+import org.eclipse.ui.ide.ResourceUtil;
 
+import edu.berkeley.eduride.base_plugin.isafile.ISABceoBoxSpec;
+import edu.berkeley.eduride.base_plugin.isafile.ISABceoBoxSpec.BceoBoxType;
 import edu.berkeley.eduride.base_plugin.util.Console;
 import edu.berkeley.eduride.base_plugin.util.IPartListenerInstaller;
+import edu.berkeley.eduride.editoroverlay.marker.Util;
 
 public class BCEOEditorEventListener implements IPartListener2 {
 
@@ -54,8 +61,72 @@ public class BCEOEditorEventListener implements IPartListener2 {
 	}
 	
 	private static void installDance(IEditorPart ed) {
+		createMarkers(ed);
+		
 		BoxConstrainedEditorOverlay.ensureInstalled(ed);
-		// TODO install dance
+	}
+	
+	private static void createMarkers(IEditorPart editor) {
+		ArrayList<ISABceoBoxSpec> specs = null; // = ISAUtil.getBoxSpecs(editor); //TODO: Wait for Nate to write this
+		
+		/*
+		//for testing only
+		specs = new ArrayList<ISABceoBoxSpec>();
+		ISABceoBoxSpec s = new ISABceoBoxSpec(ISABceoBoxSpec.BceoBoxType.INLINE, "Foo", 20, 24);
+		specs.add(s);
+		*/
+		
+		if (specs == null) { return; }  //nothing to do
+
+		IResource res = ResourceUtil.getResource(editor.getEditorInput());  //ugh
+		if (res == null) { return; } 
+		
+		System.out.println("trying to add markers");
+		
+		//TODO: MAKE SURE LINE NUMBERS/OFFSETS ARE CONSISTENT ACROSS WINDOWS/MAC/LINUX!
+		
+		//get old markers
+		List<IMarker[]> existingMultiline = Util.getMultilineMarkers(res);
+		List<IMarker> existingInline = Util.getInlineMarkers(res);
+		
+		//for each proposed box, check if it already exists, and if it doesn't create new markers
+		for (ISABceoBoxSpec boxSpec : specs) {
+			try {
+			if (boxSpec.type == BceoBoxType.INLINE) {
+				boolean exists = false;
+				for (IMarker oldMark : existingInline) {
+					if (oldMark.getAttribute("id").equals(boxSpec.name)) {  //TODO: might need IMarker.MESSAGE, not id
+						exists = true;
+						System.out.println("box already exists: " + boxSpec.name);
+						break;
+					}
+				}
+				if (!exists) {
+					System.out.println("new box: " + boxSpec.name);
+					Util.createInlineMarker(res, boxSpec.start, boxSpec.stop, boxSpec.name);
+				}
+			}
+			
+			if (boxSpec.type == BceoBoxType.MULTILINE) {
+				boolean exists = false;
+				for (IMarker[] oldMark : existingMultiline) {
+					if (oldMark[0].getAttribute("id").equals(boxSpec.name)) {  //TODO: might need IMarker.MESSAGE, not id
+						exists = true;
+						System.out.println("box already exists: " + boxSpec.name);
+						break;
+					}
+				}
+				if (!exists) {
+					System.out.println("new box: " + boxSpec.name);
+					Util.createMultiLine(res, boxSpec.start, boxSpec.stop, boxSpec.name);
+				}
+			}
+			
+			} catch (Exception e) {  //marker getAttr can throw errors
+				System.err.println("Problem parsing bceoboxspec: " + boxSpec.name);
+			}
+		}
+
 	}
 	
 	
