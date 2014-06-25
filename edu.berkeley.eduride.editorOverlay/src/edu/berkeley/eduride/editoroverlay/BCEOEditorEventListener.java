@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.swt.widgets.Display;
@@ -16,6 +17,7 @@ import org.eclipse.ui.ide.ResourceUtil;
 
 import edu.berkeley.eduride.base_plugin.isafile.ISABceoBoxSpec;
 import edu.berkeley.eduride.base_plugin.isafile.ISABceoBoxSpec.BceoBoxType;
+import edu.berkeley.eduride.base_plugin.model.EduRideFile;
 import edu.berkeley.eduride.base_plugin.util.Console;
 import edu.berkeley.eduride.base_plugin.util.IPartListenerInstaller;
 import edu.berkeley.eduride.editoroverlay.marker.Util;
@@ -67,7 +69,9 @@ public class BCEOEditorEventListener implements IPartListener2 {
 	}
 	
 	private static void createMarkers(IEditorPart editor) {
-		ArrayList<ISABceoBoxSpec> specs = null; // = ISAUtil.getBoxSpecs(editor); //TODO: Wait for Nate to write this
+		
+		IFile file = ResourceUtil.getFile(editor.getEditorInput());
+		ArrayList<ISABceoBoxSpec> specs = EduRideFile.getBceoBoxSpecs(file);
 		
 		/*
 		//for testing only
@@ -79,6 +83,9 @@ public class BCEOEditorEventListener implements IPartListener2 {
 		if (specs == null) { return; }  //nothing to do
 
 		IResource res = ResourceUtil.getResource(editor.getEditorInput());  //ugh
+		
+		
+		
 		if (res == null) { return; } 
 		
 		System.out.println("trying to add markers");
